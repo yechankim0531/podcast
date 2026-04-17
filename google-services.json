@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "230460100428",
+    "project_id": "podcastai-d7953",
+    "storage_bucket": "podcastai-d7953.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:230460100428:android:876456e9378281a53989e9",
+        "android_client_info": {
+          "package_name": "com.yechankim.podcastmvp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "230460100428-ohlt1nafdri3k017k7ahv8m26r2bi9ph.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNveSc9B-eHAq1zWcSXr9BNo9x7zLVFXo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "230460100428-ohlt1nafdri3k017k7ahv8m26r2bi9ph.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
