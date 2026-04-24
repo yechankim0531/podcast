@@ -1,5 +1,5 @@
 import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import Slider from '@react-native-community/slider';
@@ -9,17 +9,9 @@ import { ThemedView } from '@/components/themed-view';
 import { useAudioPlayer } from '@/hooks/use-audio-player';
 
 export default function PlayerScreen() {
-  const params = useLocalSearchParams<{
-    episodeTitle: string;
-    episodeAudioUrl: string;
-    episodeThumbnail?: string;
-    podcastTitle: string;
-    podcastAuthor: string;
-  }>();
-
   const {
+    currentTrack,
     isPlaying,
-    isPaused,
     isLoading,
     duration,
     position,
@@ -29,7 +21,6 @@ export default function PlayerScreen() {
     skipForward,
     skipBackward,
     seek,
-    loadAudio,
   } = useAudioPlayer();
 
 
@@ -54,30 +45,10 @@ export default function PlayerScreen() {
     }
   }, [duration, position, isDragging]);
 
-  // Decode URL-encoded strings
-  const decodeParam = (param: string | string[] | undefined): string => {
-    if (!param) return '';
-    const value = Array.isArray(param) ? param[0] : param;
-    try {
-      return decodeURIComponent(value);
-    } catch {
-      return value;
-    }
-  };
-
-  const episodeTitle = decodeParam(params.episodeTitle);
-  const episodeAudioUrl = decodeParam(params.episodeAudioUrl);
-  const episodeThumbnail = params.episodeThumbnail ? decodeParam(params.episodeThumbnail) : undefined;
-  const podcastTitle = decodeParam(params.podcastTitle);
-  const podcastAuthor = decodeParam(params.podcastAuthor);
-
-  // Load audio when component mounts
-  useEffect(() => {
-    if (episodeAudioUrl) {
-      loadAudio(episodeAudioUrl);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [episodeAudioUrl]);
+  const episodeTitle = currentTrack?.episodeTitle ?? 'Nothing playing';
+  const episodeThumbnail = currentTrack?.episodeThumbnail;
+  const podcastTitle = currentTrack?.podcastTitle ?? 'Pick an episode to start listening';
+  const podcastAuthor = currentTrack?.podcastAuthor ?? '';
 
   // Format time from milliseconds
   const formatTime = (millis: number): string => {
@@ -87,9 +58,6 @@ export default function PlayerScreen() {
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
-
-  // Calculate progress percentage
-  const progress = duration > 0 ? (position / duration) * 100 : 0;
 
   // Handle slider value change (while dragging)
   const handleSliderValueChange = (value: number) => {
@@ -114,8 +82,8 @@ export default function PlayerScreen() {
     <ThemedView style={styles.container}>
       {/* Header */}
       <ThemedView style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <ThemedText style={styles.backButton}>← Back</ThemedText>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButtonTapTarget}>
+          <ThemedText style={styles.backButton}>⌄</ThemedText>
         </TouchableOpacity>
       </ThemedView>
 
@@ -131,6 +99,12 @@ export default function PlayerScreen() {
             </ThemedView>
           )}
         </ThemedView>
+
+        {!currentTrack && (
+          <ThemedView style={styles.emptyStateContainer}>
+            <ThemedText style={styles.emptyStateText}>Start playback from an episode page.</ThemedText>
+          </ThemedView>
+        )}
 
         {/* Episode Info */}
         <ThemedView style={styles.infoContainer}>
@@ -181,7 +155,7 @@ export default function PlayerScreen() {
           <TouchableOpacity
             style={styles.controlButton}
             onPress={() => skipBackward(15)}
-            disabled={isLoading || duration === 0}>
+            disabled={isLoading || duration === 0 || !currentTrack}>
             <ThemedText style={styles.controlButtonText}>⏪ 15</ThemedText>
           </TouchableOpacity>
 
@@ -189,7 +163,7 @@ export default function PlayerScreen() {
           <TouchableOpacity
             style={[styles.controlButton, styles.playButton]}
             onPress={isPlaying ? pause : play}
-            disabled={isLoading}>
+            disabled={isLoading || !currentTrack}>
             {isLoading ? (
               <ActivityIndicator size="large" color="#FFFFFF" />
             ) : (
@@ -201,7 +175,7 @@ export default function PlayerScreen() {
           <TouchableOpacity
             style={styles.controlButton}
             onPress={() => skipForward(15)}
-            disabled={isLoading || duration === 0}>
+            disabled={isLoading || duration === 0 || !currentTrack}>
             <ThemedText style={styles.controlButtonText}>15 ⏩</ThemedText>
           </TouchableOpacity>
         </ThemedView>
@@ -220,7 +194,14 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   backButton: {
-    fontSize: 18,
+    fontSize: 30,
+    lineHeight: 30,
+  },
+  backButtonTapTarget: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
@@ -249,6 +230,14 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     width: '100%',
     gap: 8,
+  },
+  emptyStateContainer: {
+    marginTop: -16,
+    marginBottom: 24,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    opacity: 0.7,
   },
   episodeTitle: {
     fontSize: 24,

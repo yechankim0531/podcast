@@ -48,7 +48,7 @@ export default function HomeScreen() {
   const handlePodcastPress = () => {
     const encodedUrl = encodeURIComponent(RSS_FEED_URL);
     router.push({
-      pathname: '/podcast-detail',
+      pathname: '/(tabs)/podcast-detail',
       params: { rssUrl: encodedUrl },
     });
   };

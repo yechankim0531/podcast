@@ -94,7 +94,7 @@ export default function PodcastDetailScreen() {
               onPress={(ep) => {
                 // Navigate to episode detail with episode data
                 router.push({
-                  pathname: '/episode-detail',
+                  pathname: '/(tabs)/episode-detail',
                   params: {
                     episodeTitle: encodeURIComponent(ep.title),
                     episodeDescription: encodeURIComponent(ep.description),

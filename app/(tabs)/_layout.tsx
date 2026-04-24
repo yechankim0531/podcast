@@ -29,6 +29,18 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="podcast-detail"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="episode-detail"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

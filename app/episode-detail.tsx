@@ -4,8 +4,10 @@ import { Image } from 'expo-image';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useAudioPlayer } from '@/hooks/use-audio-player';
 
 export default function EpisodeDetailScreen() {
+  const { playTrack } = useAudioPlayer();
   const params = useLocalSearchParams<{
     episodeTitle: string;
     episodeDescription: string;
@@ -102,15 +104,12 @@ export default function EpisodeDetailScreen() {
             <TouchableOpacity
               style={styles.playButton}
               onPress={() => {
-                router.push({
-                  pathname: '/player',
-                  params: {
-                    episodeTitle: encodeURIComponent(episodeTitle),
-                    episodeAudioUrl: encodeURIComponent(episodeAudioUrl),
-                    episodeThumbnail: episodeThumbnail ? encodeURIComponent(episodeThumbnail) : '',
-                    podcastTitle: encodeURIComponent(podcastTitle),
-                    podcastAuthor: encodeURIComponent(podcastAuthor),
-                  },
+                void playTrack({
+                  episodeTitle,
+                  episodeAudioUrl,
+                  episodeThumbnail,
+                  podcastTitle,
+                  podcastAuthor,
                 });
               }}>
               <ThemedText style={styles.playButtonText}>▶ Play Episode</ThemedText>
