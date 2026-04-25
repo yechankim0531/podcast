@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -7,6 +8,16 @@ export interface AudioTrack {
   episodeThumbnail?: string;
   podcastTitle: string;
   podcastAuthor?: string;
+  podcastRssUrl: string;
+  podcastImageUrl?: string;
+}
+
+interface ListeningHistoryItem {
+  podcastTitle: string;
+  podcastAuthor?: string;
+  podcastImageUrl?: string;
+  podcastRssUrl: string;
+  lastListenedAt: string;
 }
 
 interface AudioPlayerContextValue {
@@ -18,6 +29,7 @@ interface AudioPlayerContextValue {
   position: number;
   error: string | null;
   hasTrackLoaded: boolean;
+  listeningHistory: ListeningHistoryItem[];
   play: () => Promise<void>;
   pause: () => Promise<void>;
   togglePlayPause: () => Promise<void>;
@@ -26,6 +38,7 @@ interface AudioPlayerContextValue {
   seek: (positionMillis: number) => Promise<void>;
   loadAudio: (uri: string) => Promise<void>;
   playTrack: (track: AudioTrack) => Promise<void>;
+  addToHistory: (track: AudioTrack) => Promise<void>;
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
@@ -39,6 +52,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [duration, setDuration] = useState(0);
   const [position, setPosition] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [listeningHistory, setListeningHistory] = useState<ListeningHistoryItem[]>([]);
 
   const clearPlaybackState = useCallback(() => {
     setIsPlaying(false);
@@ -46,6 +60,47 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     setDuration(0);
     setPosition(0);
   }, []);
+
+  const loadListeningHistory = useCallback(async () => {
+    try {
+      const historyJson = await AsyncStorage.getItem('listeningHistory');
+      if (historyJson) {
+        const history = JSON.parse(historyJson) as ListeningHistoryItem[];
+        setListeningHistory(history);
+      }
+    } catch (error) {
+      console.error('Failed to load listening history:', error);
+    }
+  }, []);
+
+  const saveListeningHistory = useCallback(async (history: ListeningHistoryItem[]) => {
+    try {
+      await AsyncStorage.setItem('listeningHistory', JSON.stringify(history));
+    } catch (error) {
+      console.error('Failed to save listening history:', error);
+    }
+  }, []);
+
+  const addToHistory = useCallback(async (track: AudioTrack) => {
+    const historyItem: ListeningHistoryItem = {
+      podcastTitle: track.podcastTitle,
+      podcastAuthor: track.podcastAuthor,
+      podcastImageUrl: track.podcastImageUrl,
+      podcastRssUrl: track.podcastRssUrl,
+      lastListenedAt: new Date().toISOString(),
+    };
+
+    setListeningHistory(prev => {
+      // Remove existing entry for this podcast if it exists
+      const filtered = prev.filter(item => item.podcastRssUrl !== track.podcastRssUrl);
+      // Add new entry at the beginning
+      const updated = [historyItem, ...filtered];
+      // Keep only the most recent 50 items
+      const limited = updated.slice(0, 50);
+      saveListeningHistory(limited);
+      return limited;
+    });
+  }, [saveListeningHistory]);
 
   const handleStatusUpdate = useCallback((status: any) => {
     if (!status.isLoaded) {
@@ -211,15 +266,14 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       setCurrentTrack(track);
       await loadAudio(track.episodeAudioUrl);
       await play();
+      await addToHistory(track);
     },
-    [loadAudio, play]
+    [loadAudio, play, addToHistory]
   );
 
   useEffect(() => {
-    return () => {
-      void unloadCurrentSound();
-    };
-  }, [unloadCurrentSound]);
+    loadListeningHistory();
+  }, [loadListeningHistory]);
 
   const value = useMemo<AudioPlayerContextValue>(
     () => ({
@@ -231,6 +285,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       position,
       error,
       hasTrackLoaded: Boolean(currentTrack && soundRef.current),
+      listeningHistory,
       play,
       pause,
       togglePlayPause,
@@ -239,6 +294,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       seek,
       loadAudio,
       playTrack,
+      addToHistory,
     }),
     [
       currentTrack,
@@ -247,8 +303,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       isLoading,
       isPaused,
       isPlaying,
+      listeningHistory,
       loadAudio,
-      pause,
       play,
       playTrack,
       position,
@@ -256,6 +312,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       skipBackward,
       skipForward,
       togglePlayPause,
+      addToHistory,
     ]
   );
 

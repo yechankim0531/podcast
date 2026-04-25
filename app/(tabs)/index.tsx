@@ -1,22 +1,33 @@
-import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, ActivityIndicator, View } from 'react-native';
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
-import { PodcastCard } from '@/components/podcast-card';
+import { HorizontalPodcastList } from '@/components/horizontal-podcast-list';
 import { ProfileSidePanel } from '@/components/profile-side-panel';
+import { SearchBar } from '@/components/search-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UserAvatarButton } from '@/components/user-avatar-button';
+import { useAudioPlayerContext } from '@/contexts/audio-player-context';
 import { useAuth } from '@/contexts/auth-context';
-import { usePodcastRSS } from '@/hooks/use-podcast-rss';
+import { fetchRecommendedPodcasts, fetchTrendingPodcasts, searchPodcasts } from '@/services/api/podcast-api';
 
-// RSS Feed URL for The Protocol podcast
-const RSS_FEED_URL = 'https://feeds.simplecast.com/CnNx__EM';
+interface PodcastItem {
+  title: string;
+  author: string;
+  imageUrl?: string;
+  rssUrl: string;
+}
 
 export default function HomeScreen() {
   const { user, loading: authLoading } = useAuth();
+  const { listeningHistory } = useAudioPlayerContext();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { data, loading, error } = usePodcastRSS(RSS_FEED_URL);
+  const [yourPodcasts, setYourPodcasts] = useState<PodcastItem[]>([]);
+  const [recommendedPodcasts, setRecommendedPodcasts] = useState<PodcastItem[]>([]);
+  const [trendingPodcasts, setTrendingPodcasts] = useState<PodcastItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -24,12 +35,86 @@ export default function HomeScreen() {
     }
   }, [user]);
 
+  useEffect(() => {
+    loadPodcasts();
+  }, [user, listeningHistory]);
+
+  const loadPodcasts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Load your podcasts from listening history
+      const yourPodcastsData = listeningHistory.map(item => ({
+        title: item.podcastTitle,
+        author: item.podcastAuthor || 'Unknown Author',
+        imageUrl: item.podcastImageUrl,
+        rssUrl: item.podcastRssUrl,
+      }));
+      setYourPodcasts(yourPodcastsData);
+
+      // Load recommended podcasts
+      if (user) {
+        try {
+          const recommended = await fetchRecommendedPodcasts(user.uid);
+          setRecommendedPodcasts(recommended.map(p => ({
+            title: p.title,
+            author: p.author,
+            imageUrl: p.imageUrl,
+            rssUrl: p.rssFeedUrl,
+          })));
+        } catch (err) {
+          console.warn('Failed to load recommendations:', err);
+          // Fallback to trending if recommendations fail
+          const trending = await fetchTrendingPodcasts();
+          setRecommendedPodcasts(trending.slice(0, 10).map(p => ({
+            title: p.title,
+            author: p.author,
+            imageUrl: p.imageUrl,
+            rssUrl: p.rssFeedUrl,
+          })));
+        }
+      }
+
+      // Load trending podcasts
+      const trending = await fetchTrendingPodcasts();
+      setTrendingPodcasts(trending.map(p => ({
+        title: p.title,
+        author: p.author,
+        imageUrl: p.imageUrl,
+        rssUrl: p.rssFeedUrl,
+      })));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load podcasts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onAvatarPress = () => {
     if (!user) {
       router.replace('/(auth)/login');
       return;
     }
     setIsProfileOpen((open) => !open);
+  };
+
+  const handlePodcastPress = (rssUrl: string) => {
+    const encodedUrl = encodeURIComponent(rssUrl);
+    router.push({ pathname: '/(tabs)/podcast-detail', params: { rssUrl: encodedUrl } });
+  };
+
+  const handleSearch = async (query: string) => {
+    try {
+      const results = await searchPodcasts(query);
+      // For now, show an alert with results count
+      // TODO: Navigate to search results screen
+      alert(`Found ${results.length} podcasts for "${query}"`);
+      console.log('Search results:', results);
+    } catch (err) {
+      console.error('Search failed:', err);
+      alert('Search failed. Please try again.');
+    }
   };
 
   const headerAvatar = (
@@ -45,14 +130,6 @@ export default function HomeScreen() {
       />
     ) : null;
 
-  const handlePodcastPress = () => {
-    const encodedUrl = encodeURIComponent(RSS_FEED_URL);
-    router.push({
-      pathname: '/(tabs)/podcast-detail',
-      params: { rssUrl: encodedUrl },
-    });
-  };
-
   if (loading) {
     return (
       <>
@@ -67,7 +144,7 @@ export default function HomeScreen() {
           </ThemedView>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" />
-            <ThemedText style={styles.loadingText}>Loading podcast...</ThemedText>
+            <ThemedText style={styles.loadingText}>Loading podcasts...</ThemedText>
           </View>
         </ThemedView>
         {profileOverlay}
@@ -75,7 +152,7 @@ export default function HomeScreen() {
     );
   }
 
-  if (error || !data) {
+  if (error) {
     return (
       <>
         <ThemedView style={styles.container}>
@@ -89,17 +166,15 @@ export default function HomeScreen() {
           </ThemedView>
           <View style={styles.errorContainer}>
             <ThemedText type="subtitle" style={styles.errorText}>
-              Error loading podcast
+              Error loading podcasts
             </ThemedText>
-            <ThemedText style={styles.errorMessage}>{error || 'Unknown error'}</ThemedText>
+            <ThemedText style={styles.errorMessage}>{error}</ThemedText>
           </View>
         </ThemedView>
         {profileOverlay}
       </>
     );
   }
-
-  const { metadata } = data;
 
   return (
     <>
@@ -113,11 +188,25 @@ export default function HomeScreen() {
           </View>
         </ThemedView>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          <PodcastCard
-            title={metadata.title}
-            author={metadata.author}
-            thumbnail={metadata.imageUrl}
-            onPress={handlePodcastPress}
+          <SearchBar onSearch={handleSearch} onPodcastSelect={handlePodcastPress} />
+          
+          <HorizontalPodcastList
+            title="Your Podcasts"
+            podcasts={yourPodcasts}
+            onPodcastPress={handlePodcastPress}
+            emptyMessage="Listen to some podcasts to see them here!"
+          />
+          
+          <HorizontalPodcastList
+            title="Recommended for You"
+            podcasts={recommendedPodcasts}
+            onPodcastPress={handlePodcastPress}
+          />
+          
+          <HorizontalPodcastList
+            title="Trending Now"
+            podcasts={trendingPodcasts}
+            onPodcastPress={handlePodcastPress}
           />
         </ScrollView>
       </ThemedView>

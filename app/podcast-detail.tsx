@@ -1,11 +1,11 @@
-import { ScrollView, StyleSheet, ActivityIndicator, View } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
 import { Image } from 'expo-image';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
+import { EpisodeCard } from '@/components/episode-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { usePodcastRSS } from '@/hooks/use-podcast-rss';
-import { EpisodeCard } from '@/components/episode-card';
 
 export default function PodcastDetailScreen() {
   const { rssUrl } = useLocalSearchParams<{ rssUrl: string | string[] }>();
@@ -18,7 +18,7 @@ export default function PodcastDetailScreen() {
     return (
       <ThemedView style={styles.container}>
         <ThemedView style={styles.header}>
-          <ThemedText type="title" onPress={() => router.back()} style={styles.backButton}>
+          <ThemedText type="title" onPress={() => router.push('/(tabs)')} style={styles.backButton}>
             ← Back
           </ThemedText>
         </ThemedView>
@@ -34,7 +34,7 @@ export default function PodcastDetailScreen() {
     return (
       <ThemedView style={styles.container}>
         <ThemedView style={styles.header}>
-          <ThemedText type="title" onPress={() => router.back()} style={styles.backButton}>
+          <ThemedText type="title" onPress={() => router.push('/(tabs)')} style={styles.backButton}>
             ← Back
           </ThemedText>
         </ThemedView>
@@ -53,7 +53,7 @@ export default function PodcastDetailScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
-        <ThemedText type="title" onPress={() => router.back()} style={styles.backButton}>
+        <ThemedText type="title" onPress={() => router.push('/(tabs)')} style={styles.backButton}>
           ← Back
         </ThemedText>
       </ThemedView>

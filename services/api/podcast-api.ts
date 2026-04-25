@@ -1,51 +1,51 @@
 /**
- * Backend API Service
- * 
- * This service handles communication with your backend API.
- * When you add a backend, update the API_BASE_URL and use these functions.
- * 
- * For now, this is a template showing how backend integration would work.
+ * Podcast API Service
+ *
+ * This service handles communication with the iTunes Search API for podcasts.
+ * Uses the public iTunes API which doesn't require authentication.
  */
 
-import type { ParsedPodcastData, PodcastMetadata, Episode } from '@/types/podcast';
+import type { Episode, ParsedPodcastData, PodcastMetadata } from '@/types/podcast';
 
-// TODO: Update this to your actual backend URL
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const ITUNES_API_BASE = 'https://itunes.apple.com';
 
 /**
- * Fetches podcast data from backend API
- * Backend would have already parsed RSS and stored in database
+ * Converts iTunes API result to PodcastMetadata
  */
-export async function fetchPodcastFromAPI(podcastId: string): Promise<ParsedPodcastData> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/podcasts/${podcastId}`);
-    
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    throw new Error(
-      `Failed to fetch podcast from API: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  }
+function itunesResultToPodcastMetadata(result: any): PodcastMetadata {
+  return {
+    title: result.collectionName || result.trackName || 'Unknown Podcast',
+    description: result.description || 'No description available',
+    author: result.artistName || 'Unknown Author',
+    imageUrl: result.artworkUrl600 || result.artworkUrl100,
+    websiteUrl: result.collectionViewUrl,
+    rssFeedUrl: result.feedUrl || result.collectionViewUrl || '',
+    language: 'en',
+    category: result.primaryGenreName || 'Podcast',
+  };
 }
 
 /**
- * Fetches list of all podcasts from backend
+ * Fetches podcast data from RSS feed (placeholder for now)
+ */
+export async function fetchPodcastFromAPI(podcastId: string): Promise<ParsedPodcastData> {
+  // For now, return mock data since RSS parsing would require additional setup
+  throw new Error('RSS parsing not implemented yet');
+}
+
+/**
+ * Fetches list of all podcasts (returns popular podcasts)
  */
 export async function fetchAllPodcasts(): Promise<PodcastMetadata[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/podcasts`);
-    
+    const response = await fetch(`${ITUNES_API_BASE}/search?term=podcast&entity=podcast&limit=50`);
+
     if (!response.ok) {
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
-    
+
     const data = await response.json();
-    return data;
+    return data.results.map(itunesResultToPodcastMetadata);
   } catch (error) {
     throw new Error(
       `Failed to fetch podcasts: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -54,44 +54,71 @@ export async function fetchAllPodcasts(): Promise<PodcastMetadata[]> {
 }
 
 /**
- * Fetches episodes for a specific podcast
+ * Fetches episodes for a specific podcast (placeholder)
  */
 export async function fetchPodcastEpisodes(podcastId: string): Promise<Episode[]> {
+  // For now, return empty array since RSS parsing is not implemented
+  return [];
+}
+
+/**
+ * Searches podcasts by query using iTunes API
+ */
+export async function searchPodcasts(query: string): Promise<PodcastMetadata[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/podcasts/${podcastId}/episodes`);
-    
+    const response = await fetch(`${ITUNES_API_BASE}/search?term=${encodeURIComponent(query)}&entity=podcast&limit=20`);
+
     if (!response.ok) {
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
-    
+
     const data = await response.json();
-    return data;
+    return data.results.map(itunesResultToPodcastMetadata);
   } catch (error) {
     throw new Error(
-      `Failed to fetch episodes: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to search podcasts: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }
 
 /**
- * Subscribes user to a podcast (backend stores subscription)
+ * Fetches trending podcasts (popular podcasts)
  */
-export async function subscribeToPodcast(podcastId: string, userId: string): Promise<void> {
+export async function fetchTrendingPodcasts(): Promise<PodcastMetadata[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/users/${userId}/subscriptions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ podcastId }),
-    });
-    
+    // Use popular search terms to get trending-like results
+    const response = await fetch(`${ITUNES_API_BASE}/search?term=news&entity=podcast&limit=20`);
+
     if (!response.ok) {
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
+
+    const data = await response.json();
+    return data.results.map(itunesResultToPodcastMetadata);
   } catch (error) {
     throw new Error(
-      `Failed to subscribe: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to fetch trending podcasts: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Fetches recommended podcasts for a user (returns popular podcasts for now)
+ */
+export async function fetchRecommendedPodcasts(userId: string): Promise<PodcastMetadata[]> {
+  try {
+    // For now, return technology podcasts as recommendations
+    const response = await fetch(`${ITUNES_API_BASE}/search?term=technology&entity=podcast&limit=15`);
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.results.map(itunesResultToPodcastMetadata);
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch recommendations: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }

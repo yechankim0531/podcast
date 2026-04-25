@@ -1,6 +1,6 @@
-import { ScrollView, StyleSheet, View, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
 import { Image } from 'expo-image';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -125,16 +125,16 @@ export default function EpisodeDetailScreen() {
               <ThemedText style={styles.description}>
                 {cleanDescription(episodeDescription)}
               </ThemedText>
-            </ThemedView>
-          )}
-
-          {/* Audio URL (for debugging, can remove later) */}
-          {episodeAudioUrl && (
-            <ThemedView style={styles.audioUrlContainer}>
-              <ThemedText style={styles.audioUrlLabel}>Audio URL:</ThemedText>
-              <ThemedText style={styles.audioUrl} numberOfLines={2}>
-                {episodeAudioUrl}
-              </ThemedText>
+              
+              {/* Host Information */}
+              <ThemedView style={styles.hostSection}>
+                <ThemedText type="subtitle" style={styles.hostTitle}>
+                  Host
+                </ThemedText>
+                <ThemedText style={styles.hostName}>
+                  {podcastAuthor}
+                </ThemedText>
+              </ThemedView>
             </ThemedView>
           )}
         </ThemedView>
@@ -243,6 +243,18 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 16,
     lineHeight: 24,
+    opacity: 0.8,
+    marginBottom: 16, // Add spacing between description and host section
+  },
+  hostSection: {
+    marginTop: 8,
+  },
+  hostTitle: {
+    fontSize: 18,
+    marginBottom: 8,
+  },
+  hostName: {
+    fontSize: 16,
     opacity: 0.8,
   },
   audioUrlContainer: {
