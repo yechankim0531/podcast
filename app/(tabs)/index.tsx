@@ -10,7 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { UserAvatarButton } from '@/components/user-avatar-button';
 import { useAudioPlayerContext } from '@/contexts/audio-player-context';
 import { useAuth } from '@/contexts/auth-context';
-import { fetchRecommendedPodcasts, fetchTrendingPodcasts, searchPodcasts } from '@/services/api/podcast-api';
+import { fetchRecommendedPodcasts, fetchTrendingPodcasts } from '@/services/api/podcast-api';
 
 interface PodcastItem {
   title: string;
@@ -45,45 +45,61 @@ export default function HomeScreen() {
       setError(null);
 
       // Load your podcasts from listening history
-      const yourPodcastsData = listeningHistory.map(item => ({
-        title: item.podcastTitle,
-        author: item.podcastAuthor || 'Unknown Author',
-        imageUrl: item.podcastImageUrl,
-        rssUrl: item.podcastRssUrl,
-      }));
+      const yourPodcastsData = Array.from(
+        new Map(
+          listeningHistory.map(item => [item.podcastRssUrl, {
+            title: item.podcastTitle,
+            author: item.podcastAuthor || 'Unknown Author',
+            imageUrl: item.podcastImageUrl,
+            rssUrl: item.podcastRssUrl,
+          }])
+        ).values()
+      );
       setYourPodcasts(yourPodcastsData);
 
       // Load recommended podcasts
       if (user) {
         try {
           const recommended = await fetchRecommendedPodcasts(user.uid);
-          setRecommendedPodcasts(recommended.map(p => ({
-            title: p.title,
-            author: p.author,
-            imageUrl: p.imageUrl,
-            rssUrl: p.rssFeedUrl,
-          })));
+          setRecommendedPodcasts(Array.from(
+            new Map(
+              recommended.map(p => [p.rssFeedUrl, {
+                title: p.title,
+                author: p.author,
+                imageUrl: p.imageUrl,
+                rssUrl: p.rssFeedUrl,
+              }])
+            ).values()
+          ));
         } catch (err) {
           console.warn('Failed to load recommendations:', err);
           // Fallback to trending if recommendations fail
           const trending = await fetchTrendingPodcasts();
-          setRecommendedPodcasts(trending.slice(0, 10).map(p => ({
-            title: p.title,
-            author: p.author,
-            imageUrl: p.imageUrl,
-            rssUrl: p.rssFeedUrl,
-          })));
+          setRecommendedPodcasts(Array.from(
+            new Map(
+              trending.slice(0, 10).map(p => [p.rssFeedUrl, {
+                title: p.title,
+                author: p.author,
+                imageUrl: p.imageUrl,
+                rssUrl: p.rssFeedUrl,
+              }])
+            ).values()
+          ));
         }
       }
 
       // Load trending podcasts
       const trending = await fetchTrendingPodcasts();
-      setTrendingPodcasts(trending.map(p => ({
-        title: p.title,
-        author: p.author,
-        imageUrl: p.imageUrl,
-        rssUrl: p.rssFeedUrl,
-      })));
+      setTrendingPodcasts(Array.from(
+        new Map(
+          trending.map(p => [p.rssFeedUrl, {
+            title: p.title,
+            author: p.author,
+            imageUrl: p.imageUrl,
+            rssUrl: p.rssFeedUrl,
+          }])
+        ).values()
+      ));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load podcasts');
     } finally {
@@ -102,19 +118,6 @@ export default function HomeScreen() {
   const handlePodcastPress = (rssUrl: string) => {
     const encodedUrl = encodeURIComponent(rssUrl);
     router.push({ pathname: '/(tabs)/podcast-detail', params: { rssUrl: encodedUrl } });
-  };
-
-  const handleSearch = async (query: string) => {
-    try {
-      const results = await searchPodcasts(query);
-      // For now, show an alert with results count
-      // TODO: Navigate to search results screen
-      alert(`Found ${results.length} podcasts for "${query}"`);
-      console.log('Search results:', results);
-    } catch (err) {
-      console.error('Search failed:', err);
-      alert('Search failed. Please try again.');
-    }
   };
 
   const headerAvatar = (
@@ -188,8 +191,6 @@ export default function HomeScreen() {
           </View>
         </ThemedView>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          <SearchBar onSearch={handleSearch} onPodcastSelect={handlePodcastPress} />
-          
           <HorizontalPodcastList
             title="Your Podcasts"
             podcasts={yourPodcasts}
@@ -209,6 +210,9 @@ export default function HomeScreen() {
             onPodcastPress={handlePodcastPress}
           />
         </ScrollView>
+        <ThemedView style={styles.bottomSearchBar}>
+          <SearchBar />
+        </ThemedView>
       </ThemedView>
       {profileOverlay}
     </>
@@ -240,7 +244,19 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingBottom: 140,
+  },
+  bottomSearchBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    paddingTop: 12,
+    backgroundColor: '#fff',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#e0e0e0',
   },
   loadingContainer: {
     flex: 1,

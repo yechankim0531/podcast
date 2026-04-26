@@ -4,10 +4,13 @@ import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { UserAvatarButton } from '@/components/user-avatar-button';
+import { useAuth } from '@/contexts/auth-context';
 import { useAudioPlayer } from '@/hooks/use-audio-player';
 
 export default function EpisodeDetailScreen() {
   const { playTrack } = useAudioPlayer();
+  const { user, loading: authLoading } = useAuth();
   const params = useLocalSearchParams<{
     episodeTitle: string;
     episodeDescription: string;
@@ -17,6 +20,7 @@ export default function EpisodeDetailScreen() {
     episodeThumbnail?: string;
     podcastTitle: string;
     podcastAuthor: string;
+    podcastRssUrl: string;
   }>();
 
   // Decode URL-encoded strings
@@ -38,6 +42,7 @@ export default function EpisodeDetailScreen() {
   const episodeThumbnail = params.episodeThumbnail ? decodeParam(params.episodeThumbnail) : undefined;
   const podcastTitle = decodeParam(params.podcastTitle);
   const podcastAuthor = decodeParam(params.podcastAuthor);
+  const podcastRssUrl = decodeParam(params.podcastRssUrl);
 
   const formatDate = (dateString: string) => {
     try {
@@ -64,6 +69,11 @@ export default function EpisodeDetailScreen() {
         <ThemedText type="title" onPress={() => router.back()} style={styles.backButton}>
           ← Back
         </ThemedText>
+        <UserAvatarButton
+          user={user}
+          authLoading={authLoading}
+          onPress={() => router.push('/(tabs)/profile')}
+        />
       </ThemedView>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Episode Header */}
@@ -110,6 +120,7 @@ export default function EpisodeDetailScreen() {
                   episodeThumbnail,
                   podcastTitle,
                   podcastAuthor,
+                  podcastRssUrl,
                 });
               }}>
               <ThemedText style={styles.playButtonText}>▶ Play Episode</ThemedText>
@@ -148,6 +159,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 16,
     paddingTop: 60,
     paddingBottom: 12,

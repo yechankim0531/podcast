@@ -126,8 +126,27 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
     const soundToUnload = soundRef.current;
     soundRef.current = null;
+    try {
+      soundToUnload.setOnPlaybackStatusUpdate(null);
+    } catch {
+      // ignore if sound has already been released
+    }
     await soundToUnload.unloadAsync();
   }, []);
+
+  const stopAudio = useCallback(async () => {
+    if (!soundRef.current) {
+      return;
+    }
+
+    try {
+      await soundRef.current.stopAsync();
+    } catch {
+      // ignore stop errors
+    }
+
+    clearPlaybackState();
+  }, [clearPlaybackState]);
 
   const loadAudio = useCallback(
     async (uri: string) => {
@@ -135,6 +154,9 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         setIsLoading(true);
         setError(null);
 
+        if (soundRef.current) {
+          await stopAudio();
+        }
         await unloadCurrentSound();
         clearPlaybackState();
 

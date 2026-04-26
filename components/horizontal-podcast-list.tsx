@@ -41,8 +41,8 @@ export function HorizontalPodcastList({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
         >
-          {podcasts.map((item) => (
-            <ThemedView key={item.rssUrl} style={styles.cardWrapper}>
+          {podcasts.map((item, index) => (
+            <ThemedView key={`${item.rssUrl}-${index}`} style={styles.cardWrapper}>
               <PodcastCard
                 title={item.title}
                 author={item.author}

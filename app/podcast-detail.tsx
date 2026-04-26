@@ -1,10 +1,13 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { EpisodeCard } from '@/components/episode-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { UserAvatarButton } from '@/components/user-avatar-button';
+import { useAuth } from '@/contexts/auth-context';
 import { usePodcastRSS } from '@/hooks/use-podcast-rss';
 
 export default function PodcastDetailScreen() {
@@ -13,6 +16,8 @@ export default function PodcastDetailScreen() {
   const rssUrlString = Array.isArray(rssUrl) ? rssUrl[0] : rssUrl;
   const decodedRssUrl = rssUrlString ? decodeURIComponent(rssUrlString) : null;
   const { data, loading, error } = usePodcastRSS(decodedRssUrl);
+  const { user, loading: authLoading } = useAuth();
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   if (loading) {
     return (
@@ -21,6 +26,11 @@ export default function PodcastDetailScreen() {
           <ThemedText type="title" onPress={() => router.push('/(tabs)')} style={styles.backButton}>
             ← Back
           </ThemedText>
+          <UserAvatarButton
+            user={user}
+            authLoading={authLoading}
+            onPress={() => router.push('/(tabs)/profile')}
+          />
         </ThemedView>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" />
@@ -37,6 +47,11 @@ export default function PodcastDetailScreen() {
           <ThemedText type="title" onPress={() => router.push('/(tabs)')} style={styles.backButton}>
             ← Back
           </ThemedText>
+          <UserAvatarButton
+            user={user}
+            authLoading={authLoading}
+            onPress={() => router.push('/(tabs)/profile')}
+          />
         </ThemedView>
         <View style={styles.errorContainer}>
           <ThemedText type="subtitle" style={styles.errorText}>
@@ -50,12 +65,26 @@ export default function PodcastDetailScreen() {
 
   const { metadata, episodes } = data;
 
+  // Clean HTML from description
+  const cleanDescription = (html: string) => {
+    return html.replace(/<[^>]*>/g, '').trim();
+  };
+
+  const toggleDescription = () => {
+    setIsDescriptionExpanded(!isDescriptionExpanded);
+  };
+
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
         <ThemedText type="title" onPress={() => router.push('/(tabs)')} style={styles.backButton}>
           ← Back
         </ThemedText>
+        <UserAvatarButton
+          user={user}
+          authLoading={authLoading}
+          onPress={() => router.push('/(tabs)/profile')}
+        />
       </ThemedView>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Podcast Header */}
@@ -75,9 +104,17 @@ export default function PodcastDetailScreen() {
               {metadata.author}
             </ThemedText>
             {metadata.description && (
-              <ThemedText style={styles.podcastDescription} numberOfLines={3}>
-                {metadata.description}
-              </ThemedText>
+              <TouchableOpacity onPress={toggleDescription} activeOpacity={0.7}>
+                <ThemedText style={styles.podcastDescription} numberOfLines={isDescriptionExpanded ? undefined : 3}>
+                  {cleanDescription(metadata.description)}
+                  {!isDescriptionExpanded && cleanDescription(metadata.description).length > 150 && (
+                    <ThemedText style={styles.readMoreText}> ... Read more</ThemedText>
+                  )}
+                  {isDescriptionExpanded && (
+                    <ThemedText style={styles.showLessText}> Show less</ThemedText>
+                  )}
+                </ThemedText>
+              </TouchableOpacity>
             )}
           </ThemedView>
         </ThemedView>
@@ -104,6 +141,7 @@ export default function PodcastDetailScreen() {
                     episodeThumbnail: ep.thumbnail ? encodeURIComponent(ep.thumbnail) : '',
                     podcastTitle: encodeURIComponent(metadata.title),
                     podcastAuthor: encodeURIComponent(metadata.author),
+                    podcastRssUrl: decodedRssUrl ? encodeURIComponent(decodedRssUrl) : '',
                   },
                 });
               }}
@@ -120,6 +158,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 16,
     paddingTop: 60,
     paddingBottom: 12,
@@ -194,6 +235,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     opacity: 0.8,
+  },
+  readMoreText: {
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  showLessText: {
+    color: '#007AFF',
+    fontWeight: '500',
   },
   episodesSection: {
     paddingHorizontal: 16,

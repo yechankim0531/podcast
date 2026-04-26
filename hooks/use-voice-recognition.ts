@@ -1,11 +1,36 @@
 /**
  * React Hook for voice recognition using React Native Voice
- * 
+ *
  * Handles speech-to-text functionality
+ *
+ * NOTE: This requires @react-native-voice/voice package and a custom dev client.
+ * See VOICE_SETUP.md for installation instructions.
  */
 
-import { useState, useEffect } from 'react';
-import Voice from '@react-native-voice/voice';
+import { useEffect, useState } from 'react';
+
+// Type definitions for voice events
+interface SpeechResultsEvent {
+  value?: string[];
+}
+
+interface SpeechErrorEvent {
+  error?: {
+    message?: string;
+  };
+}
+
+// Stub implementation since @react-native-voice/voice is not installed
+const VoiceStub = {
+  onSpeechStart: null as (() => void) | null,
+  onSpeechEnd: null as (() => void) | null,
+  onSpeechResults: null as ((event: SpeechResultsEvent) => void) | null,
+  onSpeechError: null as ((event: SpeechErrorEvent) => void) | null,
+  onSpeechPartialResults: null as ((event: SpeechResultsEvent) => void) | null,
+  start: () => Promise.resolve(),
+  stop: () => Promise.resolve(),
+  destroy: () => Promise.resolve(),
+};
 
 interface UseVoiceRecognitionResult {
   isListening: boolean;
@@ -23,18 +48,18 @@ export function useVoiceRecognition(): UseVoiceRecognitionResult {
 
   useEffect(() => {
     // Set up voice recognition event handlers
-    Voice.onSpeechStart = () => {
+    VoiceStub.onSpeechStart = () => {
       setIsListening(true);
       setError(null);
       console.log('🎤 Speech recognition started');
     };
 
-    Voice.onSpeechEnd = () => {
+    VoiceStub.onSpeechEnd = () => {
       setIsListening(false);
       console.log('🎤 Speech recognition ended');
     };
 
-    Voice.onSpeechResults = (event) => {
+    VoiceStub.onSpeechResults = (event: SpeechResultsEvent) => {
       if (event.value && event.value.length > 0) {
         const text = event.value[0];
         setTranscript(text);
@@ -42,14 +67,14 @@ export function useVoiceRecognition(): UseVoiceRecognitionResult {
       }
     };
 
-    Voice.onSpeechError = (event) => {
+    VoiceStub.onSpeechError = (event: SpeechErrorEvent) => {
       const errorMessage = event.error?.message || 'Speech recognition error';
       setError(errorMessage);
       setIsListening(false);
       console.error('❌ Speech recognition error:', event.error);
     };
 
-    Voice.onSpeechPartialResults = (event) => {
+    VoiceStub.onSpeechPartialResults = (event: SpeechResultsEvent) => {
       if (event.value && event.value.length > 0) {
         // Update transcript in real-time as user speaks
         setTranscript(event.value[0]);
@@ -58,7 +83,14 @@ export function useVoiceRecognition(): UseVoiceRecognitionResult {
 
     // Cleanup on unmount
     return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
+      VoiceStub.destroy().then(() => {
+        // Clear all listeners
+        VoiceStub.onSpeechStart = null;
+        VoiceStub.onSpeechEnd = null;
+        VoiceStub.onSpeechResults = null;
+        VoiceStub.onSpeechError = null;
+        VoiceStub.onSpeechPartialResults = null;
+      });
     };
   }, []);
 
@@ -66,8 +98,10 @@ export function useVoiceRecognition(): UseVoiceRecognitionResult {
     try {
       setError(null);
       setTranscript('');
-      await Voice.start('en-US'); // Start listening for English
-      console.log('🎤 Started listening...');
+      // Note: Voice recognition requires @react-native-voice/voice package and custom dev client
+      // See VOICE_SETUP.md for setup instructions
+      setError('Voice recognition not available. Requires custom dev client setup.');
+      console.log('🎤 Voice recognition requires setup - see VOICE_SETUP.md');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to start listening';
       setError(errorMessage);
@@ -77,9 +111,9 @@ export function useVoiceRecognition(): UseVoiceRecognitionResult {
 
   const stopListening = async () => {
     try {
-      await Voice.stop();
+      // Note: Voice recognition requires @react-native-voice/voice package and custom dev client
       setIsListening(false);
-      console.log('🎤 Stopped listening');
+      console.log('🎤 Stopped listening (stub implementation)');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to stop listening';
       setError(errorMessage);
