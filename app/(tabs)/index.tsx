@@ -57,11 +57,15 @@ export default function HomeScreen() {
       );
       setYourPodcasts(yourPodcastsData);
 
+      const yourRssUrls = new Set(yourPodcastsData.map(p => p.rssUrl));
+      const filterYourPodcasts = (podcasts: PodcastItem[]) =>
+        podcasts.filter(p => !yourRssUrls.has(p.rssUrl));
+
       // Load recommended podcasts
       if (user) {
         try {
           const recommended = await fetchRecommendedPodcasts(user.uid);
-          setRecommendedPodcasts(Array.from(
+          setRecommendedPodcasts(filterYourPodcasts(Array.from(
             new Map(
               recommended.map(p => [p.rssFeedUrl, {
                 title: p.title,
@@ -70,12 +74,12 @@ export default function HomeScreen() {
                 rssUrl: p.rssFeedUrl,
               }])
             ).values()
-          ));
+          )));
         } catch (err) {
           console.warn('Failed to load recommendations:', err);
           // Fallback to trending if recommendations fail
           const trending = await fetchTrendingPodcasts();
-          setRecommendedPodcasts(Array.from(
+          setRecommendedPodcasts(filterYourPodcasts(Array.from(
             new Map(
               trending.slice(0, 10).map(p => [p.rssFeedUrl, {
                 title: p.title,
@@ -84,13 +88,13 @@ export default function HomeScreen() {
                 rssUrl: p.rssFeedUrl,
               }])
             ).values()
-          ));
+          )));
         }
       }
 
       // Load trending podcasts
       const trending = await fetchTrendingPodcasts();
-      setTrendingPodcasts(Array.from(
+      setTrendingPodcasts(filterYourPodcasts(Array.from(
         new Map(
           trending.map(p => [p.rssFeedUrl, {
             title: p.title,
@@ -99,7 +103,7 @@ export default function HomeScreen() {
             rssUrl: p.rssFeedUrl,
           }])
         ).values()
-      ));
+      )));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load podcasts');
     } finally {

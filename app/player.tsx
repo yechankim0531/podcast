@@ -1,8 +1,9 @@
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
-import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -156,7 +157,10 @@ export default function PlayerScreen() {
             style={styles.controlButton}
             onPress={() => skipBackward(15)}
             disabled={isLoading || duration === 0 || !currentTrack}>
-            <ThemedText style={styles.controlButtonText}>⏪ 15</ThemedText>
+            <View style={styles.skipIconWrapper}>
+              <Ionicons name="play-back" size={24} color="#000" />
+            </View>
+            <ThemedText style={[styles.skipLabel, styles.skipLabelLeft]}>15</ThemedText>
           </TouchableOpacity>
 
           {/* Play/Pause Button */}
@@ -167,7 +171,11 @@ export default function PlayerScreen() {
             {isLoading ? (
               <ActivityIndicator size="large" color="#FFFFFF" />
             ) : (
-              <ThemedText style={styles.playButtonText}>{isPlaying ? '⏸' : '▶'}</ThemedText>
+              <Ionicons
+                name={isPlaying ? 'pause' : 'play'}
+                size={26}
+                color="#FFFFFF"
+              />
             )}
           </TouchableOpacity>
 
@@ -176,7 +184,10 @@ export default function PlayerScreen() {
             style={styles.controlButton}
             onPress={() => skipForward(15)}
             disabled={isLoading || duration === 0 || !currentTrack}>
-            <ThemedText style={styles.controlButtonText}>15 ⏩</ThemedText>
+            <View style={styles.skipIconWrapper}>
+              <Ionicons name="play-forward" size={24} color="#000" />
+            </View>
+            <ThemedText style={[styles.skipLabel, styles.skipLabelRight]}>15</ThemedText>
           </TouchableOpacity>
         </ThemedView>
       </View>
@@ -291,10 +302,17 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   controlButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  skipIconWrapper: {
+    position: 'absolute',
+    width: '100%',
+    top: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -311,6 +329,23 @@ const styles = StyleSheet.create({
   controlButtonText: {
     fontSize: 24,
     color: '#000000',
+  },
+  skipLabel: {
+    position: 'absolute',
+    bottom: 4,
+    width: '100%',
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#000000',
+    fontWeight: '700',
+  },
+  skipLabelLeft: {
+    left: 8,
+    textAlign: 'left',
+  },
+  skipLabelRight: {
+    right: 8,
+    textAlign: 'right',
   },
   disabledButton: {
     opacity: 0.3,

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useSegments } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -42,7 +43,15 @@ export function MiniPlayer() {
           event.stopPropagation();
           void togglePlayPause();
         }}>
-        <ThemedText style={styles.playButtonText}>{isLoading ? '...' : isPlaying ? '⏸' : '▶'}</ThemedText>
+        {isLoading ? (
+          <ThemedText style={styles.playButtonText}>...</ThemedText>
+        ) : (
+          <Ionicons
+            name={isPlaying ? 'pause' : 'play'}
+            size={20}
+            color="#FFFFFF"
+          />
+        )}
       </Pressable>
     </Pressable>
   );
