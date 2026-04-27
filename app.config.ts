@@ -79,6 +79,7 @@ export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
     ...config,
     plugins: [
       ...(config.plugins ?? []),
+      'expo-web-browser',
       [
         'expo-image-picker',
         {

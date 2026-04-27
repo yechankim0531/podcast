@@ -1,17 +1,16 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { HorizontalPodcastList } from '@/components/horizontal-podcast-list';
 import { ProfileSidePanel } from '@/components/profile-side-panel';
-import { SearchBar } from '@/components/search-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UserAvatarButton } from '@/components/user-avatar-button';
 import { useAudioPlayerContext } from '@/contexts/audio-player-context';
 import { useAuth } from '@/contexts/auth-context';
 import { fetchRecommendedPodcasts, fetchTrendingPodcasts } from '@/services/api/podcast-api';
+import { parseRSSFeed } from '@/services/rss-parser';
 
 interface PodcastItem {
   title: string;
@@ -46,7 +45,7 @@ export default function HomeScreen() {
       setError(null);
 
       // Load your podcasts from listening history
-      const yourPodcastsData = Array.from(
+      const yourPodcastsDataBase = Array.from(
         new Map(
           listeningHistory.map(item => [item.podcastRssUrl, {
             title: item.podcastTitle,
@@ -55,6 +54,24 @@ export default function HomeScreen() {
             rssUrl: item.podcastRssUrl,
           }])
         ).values()
+      );
+
+      const yourPodcastsData = await Promise.all(
+        yourPodcastsDataBase.map(async (podcast) => {
+          if (podcast.imageUrl) {
+            return podcast;
+          }
+
+          try {
+            const parsed = await parseRSSFeed(podcast.rssUrl);
+            return {
+              ...podcast,
+              imageUrl: parsed.metadata.imageUrl,
+            };
+          } catch {
+            return podcast;
+          }
+        })
       );
       setYourPodcasts(yourPodcastsData);
 
@@ -120,10 +137,6 @@ export default function HomeScreen() {
     setIsProfileOpen((open) => !open);
   };
 
-  const handleChatButtonPress = () => {
-    router.push('/(tabs)/chat');
-  };
-
   const handlePodcastPress = (rssUrl: string) => {
     const encodedUrl = encodeURIComponent(rssUrl);
     router.push({ pathname: '/(tabs)/podcast-detail', params: { rssUrl: encodedUrl } });
@@ -151,9 +164,6 @@ export default function HomeScreen() {
               <ThemedText type="title" style={styles.heading}>
                 Podcasts
               </ThemedText>
-              <TouchableOpacity style={styles.chatButton} onPress={handleChatButtonPress}>
-                <Ionicons name="chatbubble-ellipses-outline" size={22} color="#007AFF" />
-              </TouchableOpacity>
               {headerAvatar}
             </View>
           </ThemedView>
@@ -176,9 +186,6 @@ export default function HomeScreen() {
               <ThemedText type="title" style={styles.heading}>
                 Podcasts
               </ThemedText>
-              <TouchableOpacity style={styles.chatButton} onPress={handleChatButtonPress}>
-                <Ionicons name="chatbubble-ellipses-outline" size={22} color="#007AFF" />
-              </TouchableOpacity>
               {headerAvatar}
             </View>
           </ThemedView>
@@ -202,9 +209,6 @@ export default function HomeScreen() {
             <ThemedText type="title" style={styles.heading}>
               Podcasts
             </ThemedText>
-            <TouchableOpacity style={styles.chatButton} onPress={handleChatButtonPress}>
-              <Ionicons name="chatbubble-ellipses-outline" size={22} color="#007AFF" />
-            </TouchableOpacity>
             {headerAvatar}
           </View>
         </ThemedView>
@@ -228,9 +232,6 @@ export default function HomeScreen() {
             onPodcastPress={handlePodcastPress}
           />
         </ScrollView>
-        <ThemedView style={styles.bottomSearchBar}>
-          <SearchBar />
-        </ThemedView>
       </ThemedView>
       {profileOverlay}
     </>
@@ -262,19 +263,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 140,
-  },
-  bottomSearchBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    paddingTop: 12,
-    backgroundColor: '#fff',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e0e0e0',
+    paddingBottom: 96,
   },
   loadingContainer: {
     flex: 1,
@@ -285,17 +274,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     opacity: 0.7,
-  },
-  chatButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(0, 122, 255, 0.25)',
-    backgroundColor: '#FFFFFF',
-    marginRight: 8,
   },
   errorContainer: {
     flex: 1,

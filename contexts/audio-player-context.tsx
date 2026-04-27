@@ -4,8 +4,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 export interface AudioTrack {
   episodeTitle: string;
+  episodeDescription?: string;
   episodeAudioUrl: string;
   episodeThumbnail?: string;
+  episodePublishDate?: string;
+  episodeDuration?: string;
+  episodeTranscriptUrl?: string;
+  episodeTranscriptType?: string;
+  episodeTranscriptLanguage?: string;
   podcastTitle: string;
   podcastAuthor?: string;
   podcastRssUrl: string;
@@ -30,6 +36,7 @@ interface AudioPlayerContextValue {
   error: string | null;
   hasTrackLoaded: boolean;
   listeningHistory: ListeningHistoryItem[];
+  playbackPositions: Record<string, number>;
   play: () => Promise<void>;
   pause: () => Promise<void>;
   togglePlayPause: () => Promise<void>;
@@ -37,14 +44,18 @@ interface AudioPlayerContextValue {
   skipBackward: (seconds?: number) => Promise<void>;
   seek: (positionMillis: number) => Promise<void>;
   loadAudio: (uri: string) => Promise<void>;
-  playTrack: (track: AudioTrack) => Promise<void>;
+  playTrack: (track: AudioTrack, startPositionMillis?: number) => Promise<void>;
+  clearEpisodeProgress: (episodeAudioUrl: string) => Promise<void>;
   addToHistory: (track: AudioTrack) => Promise<void>;
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
+const MIN_PROGRESS_TO_SAVE = 5000;
+const NEAR_END_THRESHOLD = 15000;
 
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const soundRef = useRef<Audio.Sound | null>(null);
+  const currentTrackRef = useRef<AudioTrack | null>(null);
   const [currentTrack, setCurrentTrack] = useState<AudioTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -53,6 +64,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [position, setPosition] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [listeningHistory, setListeningHistory] = useState<ListeningHistoryItem[]>([]);
+  const [playbackPositions, setPlaybackPositions] = useState<Record<string, number>>({});
 
   const clearPlaybackState = useCallback(() => {
     setIsPlaying(false);
@@ -81,11 +93,84 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  const loadPlaybackPositions = useCallback(async () => {
+    try {
+      const positionsJson = await AsyncStorage.getItem('playbackPositions');
+      if (positionsJson) {
+        setPlaybackPositions(JSON.parse(positionsJson) as Record<string, number>);
+      }
+    } catch (error) {
+      console.error('Failed to load playback positions:', error);
+    }
+  }, []);
+
+  const persistPlaybackPositions = useCallback(async (positions: Record<string, number>) => {
+    try {
+      await AsyncStorage.setItem('playbackPositions', JSON.stringify(positions));
+    } catch (error) {
+      console.error('Failed to save playback positions:', error);
+    }
+  }, []);
+
+  const saveEpisodeProgress = useCallback(
+    async (episodeAudioUrl: string, positionMillis: number, durationMillis?: number) => {
+      const shouldClear =
+        positionMillis < MIN_PROGRESS_TO_SAVE ||
+        (durationMillis != null && durationMillis > 0 && durationMillis - positionMillis < NEAR_END_THRESHOLD);
+
+      setPlaybackPositions(prev => {
+        const updated = { ...prev };
+        if (shouldClear) {
+          delete updated[episodeAudioUrl];
+        } else {
+          updated[episodeAudioUrl] = positionMillis;
+        }
+        persistPlaybackPositions(updated);
+        return updated;
+      });
+    },
+    [persistPlaybackPositions]
+  );
+
+  const clearEpisodeProgress = useCallback(
+    async (episodeAudioUrl: string) => {
+      setPlaybackPositions(prev => {
+        const updated = { ...prev };
+        delete updated[episodeAudioUrl];
+        persistPlaybackPositions(updated);
+        return updated;
+      });
+    },
+    [persistPlaybackPositions]
+  );
+
+  const saveCurrentTrackProgress = useCallback(async () => {
+    const activeTrack = currentTrackRef.current;
+    if (!activeTrack || !soundRef.current) {
+      return;
+    }
+
+    try {
+      const status = await soundRef.current.getStatusAsync();
+      if (!status.isLoaded) {
+        return;
+      }
+
+      await saveEpisodeProgress(
+        activeTrack.episodeAudioUrl,
+        status.positionMillis ?? 0,
+        status.durationMillis ?? undefined
+      );
+    } catch (error) {
+      console.error('Failed to save current playback position:', error);
+    }
+  }, [saveEpisodeProgress]);
+
   const addToHistory = useCallback(async (track: AudioTrack) => {
     const historyItem: ListeningHistoryItem = {
       podcastTitle: track.podcastTitle,
       podcastAuthor: track.podcastAuthor,
-      podcastImageUrl: track.podcastImageUrl,
+      podcastImageUrl: track.podcastImageUrl || track.episodeThumbnail,
       podcastRssUrl: track.podcastRssUrl,
       lastListenedAt: new Date().toISOString(),
     };
@@ -116,8 +201,12 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       setIsPlaying(false);
       setIsPaused(false);
       setPosition(0);
+      const activeTrack = currentTrackRef.current;
+      if (activeTrack) {
+        void clearEpisodeProgress(activeTrack.episodeAudioUrl);
+      }
     }
-  }, []);
+  }, [clearEpisodeProgress]);
 
   const unloadCurrentSound = useCallback(async () => {
     if (!soundRef.current) {
@@ -193,7 +282,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         throw new Error('No audio loaded');
       }
 
-      await soundRef.current.playAsync();
+      await soundRef.current.setStatusAsync({ shouldPlay: true });
       setIsPlaying(true);
       setIsPaused(false);
       setError(null);
@@ -209,22 +298,36 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         return;
       }
 
-      await soundRef.current.pauseAsync();
+      await soundRef.current.setStatusAsync({ shouldPlay: false });
+      await saveCurrentTrackProgress();
       setIsPlaying(false);
       setIsPaused(true);
+      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to pause audio');
     }
-  }, []);
+  }, [saveCurrentTrackProgress]);
 
   const togglePlayPause = useCallback(async () => {
-    if (isPlaying) {
-      await pause();
-      return;
-    }
+    try {
+      if (!soundRef.current) {
+        return;
+      }
 
-    await play();
-  }, [isPlaying, pause, play]);
+      const status = await soundRef.current.getStatusAsync();
+      if (!status.isLoaded) {
+        return;
+      }
+
+      if (status.isPlaying) {
+        await pause();
+      } else {
+        await play();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to toggle playback');
+    }
+  }, [pause, play]);
 
   const skipForward = useCallback(
     async (seconds: number = 15) => {
@@ -284,18 +387,33 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const playTrack = useCallback(
-    async (track: AudioTrack) => {
+    async (track: AudioTrack, startPositionMillis: number = 0) => {
+      const previousTrack = currentTrackRef.current;
+      if (previousTrack && previousTrack.episodeAudioUrl !== track.episodeAudioUrl) {
+        await saveCurrentTrackProgress();
+      }
+
       setCurrentTrack(track);
+      currentTrackRef.current = track;
       await loadAudio(track.episodeAudioUrl);
+      if (startPositionMillis > 0 && soundRef.current) {
+        await soundRef.current.setPositionAsync(startPositionMillis);
+        setPosition(startPositionMillis);
+      }
       await play();
       await addToHistory(track);
     },
-    [loadAudio, play, addToHistory]
+    [loadAudio, play, addToHistory, saveCurrentTrackProgress]
   );
 
   useEffect(() => {
     loadListeningHistory();
-  }, [loadListeningHistory]);
+    loadPlaybackPositions();
+  }, [loadListeningHistory, loadPlaybackPositions]);
+
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
 
   const value = useMemo<AudioPlayerContextValue>(
     () => ({
@@ -308,6 +426,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       error,
       hasTrackLoaded: Boolean(currentTrack && soundRef.current),
       listeningHistory,
+      playbackPositions,
       play,
       pause,
       togglePlayPause,
@@ -316,6 +435,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       seek,
       loadAudio,
       playTrack,
+      clearEpisodeProgress,
       addToHistory,
     }),
     [
@@ -326,6 +446,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       isPaused,
       isPlaying,
       listeningHistory,
+      playbackPositions,
       loadAudio,
       play,
       playTrack,
@@ -334,6 +455,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       skipBackward,
       skipForward,
       togglePlayPause,
+      clearEpisodeProgress,
       addToHistory,
     ]
   );

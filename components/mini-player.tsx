@@ -21,11 +21,12 @@ export function MiniPlayer() {
   }
 
   const bottomOffset = activeRootSegment === '(tabs)' ? insets.bottom + TAB_BAR_HEIGHT  : insets.bottom ;
+  const artworkUrl = currentTrack.podcastImageUrl || currentTrack.episodeThumbnail;
 
   return (
     <Pressable style={[styles.container, { bottom: bottomOffset }]} onPress={() => router.push('/player')}>
       <Image
-        source={currentTrack.episodeThumbnail ? { uri: currentTrack.episodeThumbnail } : require('@/assets/images/icon.png')}
+        source={artworkUrl ? { uri: artworkUrl } : require('@/assets/images/icon.png')}
         style={styles.artwork}
         contentFit="cover"
       />

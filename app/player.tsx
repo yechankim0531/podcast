@@ -3,7 +3,7 @@ import Slider from '@react-native-community/slider';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Share, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -47,7 +47,7 @@ export default function PlayerScreen() {
   }, [duration, position, isDragging]);
 
   const episodeTitle = currentTrack?.episodeTitle ?? 'Nothing playing';
-  const episodeThumbnail = currentTrack?.episodeThumbnail;
+  const artworkUrl = currentTrack?.podcastImageUrl || currentTrack?.episodeThumbnail;
   const podcastTitle = currentTrack?.podcastTitle ?? 'Pick an episode to start listening';
   const podcastAuthor = currentTrack?.podcastAuthor ?? '';
 
@@ -79,6 +79,25 @@ export default function PlayerScreen() {
     }
   };
 
+  const handleShare = async () => {
+    if (!currentTrack) {
+      return;
+    }
+
+    const authorText = currentTrack.podcastAuthor ? ` by ${currentTrack.podcastAuthor}` : '';
+    const urlText = currentTrack.podcastRssUrl ? `\n\nPodcast feed: ${currentTrack.podcastRssUrl}` : '';
+
+    try {
+      await Share.share({
+        title: currentTrack.podcastTitle,
+        message: `I'm listening to "${currentTrack.episodeTitle}" from "${currentTrack.podcastTitle}"${authorText}.${urlText}`,
+        url: currentTrack.podcastRssUrl,
+      });
+    } catch (error) {
+      console.error('Failed to share podcast:', error);
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       {/* Header */}
@@ -86,14 +105,22 @@ export default function PlayerScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButtonTapTarget}>
           <ThemedText style={styles.backButton}>⌄</ThemedText>
         </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleShare}
+          disabled={!currentTrack}
+          style={[styles.shareButton, !currentTrack && styles.shareButtonDisabled]}
+          accessibilityRole="button"
+          accessibilityLabel="Share podcast">
+          <Ionicons name="share-outline" size={24} color={currentTrack ? '#007AFF' : '#A0A0A0'} />
+        </TouchableOpacity>
       </ThemedView>
 
       {/* Content */}
       <View style={styles.content}>
-        {/* Episode Artwork */}
+        {/* Podcast Artwork */}
         <ThemedView style={styles.artworkContainer}>
-          {episodeThumbnail ? (
-            <Image source={{ uri: episodeThumbnail }} style={styles.artwork} contentFit="cover" />
+          {artworkUrl ? (
+            <Image source={{ uri: artworkUrl }} style={styles.artwork} contentFit="cover" />
           ) : (
             <ThemedView style={[styles.artwork, styles.artworkPlaceholder]}>
               <ThemedText style={styles.placeholderText}>🎙️</ThemedText>
@@ -200,6 +227,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
     paddingTop: 60,
     paddingBottom: 12,
@@ -213,6 +243,15 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  shareButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareButtonDisabled: {
+    opacity: 0.55,
   },
   content: {
     flex: 1,

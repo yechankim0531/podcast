@@ -120,6 +120,20 @@ function parseXMLWithRegex(xmlString: string): any {
     const itemImageMatch = itemXml.match(/<itunes:image[^>]*href=["']([^"']+)["']/i);
     if (itemImageMatch) item.image = itemImageMatch[1].trim();
 
+    // Extract podcast transcript metadata when available.
+    // Common Podcasting 2.0 shape: <podcast:transcript url="..." type="text/vtt" language="en" />
+    const transcriptMatch = itemXml.match(/<(?:podcast:)?transcript\b[^>]*>/i);
+    if (transcriptMatch) {
+      const transcriptTag = transcriptMatch[0];
+      const urlMatch = transcriptTag.match(/\burl=["']([^"']+)["']/i);
+      const typeMatch = transcriptTag.match(/\btype=["']([^"']+)["']/i);
+      const languageMatch = transcriptTag.match(/\blanguage=["']([^"']+)["']/i);
+
+      if (urlMatch) item.transcriptUrl = urlMatch[1].trim();
+      if (typeMatch) item.transcriptType = typeMatch[1].trim();
+      if (languageMatch) item.transcriptLanguage = languageMatch[1].trim();
+    }
+
     if (item.title && item.audioUrl) {
       result.items.push(item);
     }
@@ -152,6 +166,9 @@ function transformToPodcastData(
     publishDate: item.pubDate || new Date().toISOString(),
     duration: item.duration,
     thumbnail: item.image,
+    transcriptUrl: item.transcriptUrl,
+    transcriptType: item.transcriptType,
+    transcriptLanguage: item.transcriptLanguage,
     guid: item.guid,
   })) || [];
 
