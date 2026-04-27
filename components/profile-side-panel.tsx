@@ -159,6 +159,11 @@ export function ProfileSidePanel({ open, user, onClose }: Props) {
     router.push('/(tabs)/profile');
   };
 
+  const goToLikedPodcasts = () => {
+    onClose();
+    router.push('/(tabs)/liked-podcasts' as never);
+  };
+
   const handleLogout = async () => {
     if (loggingOut) return;
     setLoggingOut(true);
@@ -229,6 +234,20 @@ export function ProfileSidePanel({ open, user, onClose }: Props) {
               <Text style={styles.viewProfileHint}>View profile</Text>
             </View>
           </Pressable>
+
+          <View style={styles.menuSection}>
+            <Pressable
+              onPress={goToLikedPodcasts}
+              style={({ pressed }) => [styles.menuItem, pressed && styles.profileRowPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Open liked podcasts">
+              <View style={styles.menuIconWrap}>
+                <Ionicons name="heart" size={20} color="#FF2D55" />
+              </View>
+              <Text style={styles.menuItemLabel}>Liked Podcasts</Text>
+              <Ionicons name="chevron-forward" size={20} color="#8e8e93" />
+            </Pressable>
+          </View>
 
           <View style={styles.logoutSection}>
             <Pressable
@@ -325,6 +344,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     letterSpacing: 0.1,
+  },
+  menuSection: {
+    marginTop: 24,
+    gap: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+  },
+  menuIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuItemLabel: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   logoutSection: {
     flex: 1,
