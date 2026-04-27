@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UserAvatarButton } from '@/components/user-avatar-button';
 import { useAuth } from '@/contexts/auth-context';
+import { useLikedPodcasts } from '@/contexts/liked-podcasts-context';
 import { usePodcastRSS } from '@/hooks/use-podcast-rss';
 
 export default function PodcastDetailScreen() {
@@ -18,15 +19,30 @@ export default function PodcastDetailScreen() {
   const decodedRssUrl = rssUrlString ? decodeURIComponent(rssUrlString) : null;
   const { data, loading, error } = usePodcastRSS(decodedRssUrl);
   const { user, loading: authLoading } = useAuth();
+  const { isPodcastLiked, toggleLikedPodcast } = useLikedPodcasts();
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  const goHome = () => {
+    router.replace('/(tabs)');
+  };
+
+  const homeButton = (
+    <TouchableOpacity
+      onPress={goHome}
+      style={styles.homeButton}
+      activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityLabel="Go home">
+      <Ionicons name="home-outline" size={20} color="#007AFF" />
+      <ThemedText style={styles.homeButtonText}>Home</ThemedText>
+    </TouchableOpacity>
+  );
 
   if (loading) {
     return (
       <ThemedView style={styles.container}>
         <ThemedView style={styles.header}>
-          <ThemedText type="title" onPress={() => router.push('/(tabs)')} style={styles.backButton}>
-            ← Back
-          </ThemedText>
+          {homeButton}
           <UserAvatarButton
             user={user}
             authLoading={authLoading}
@@ -45,9 +61,7 @@ export default function PodcastDetailScreen() {
     return (
       <ThemedView style={styles.container}>
         <ThemedView style={styles.header}>
-          <ThemedText type="title" onPress={() => router.push('/(tabs)')} style={styles.backButton}>
-            ← Back
-          </ThemedText>
+          {homeButton}
           <UserAvatarButton
             user={user}
             authLoading={authLoading}
@@ -90,16 +104,35 @@ export default function PodcastDetailScreen() {
     }
   };
 
+  const liked = isPodcastLiked(decodedRssUrl);
+  const toggleLiked = () => {
+    if (!decodedRssUrl) {
+      return;
+    }
+
+    void toggleLikedPodcast({
+      title: metadata.title,
+      author: metadata.author,
+      imageUrl: metadata.imageUrl,
+      rssUrl: decodedRssUrl,
+    });
+  };
+
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
-        <ThemedText type="title" onPress={() => router.push('/(tabs)')} style={styles.backButton}>
-          ← Back
-        </ThemedText>
+        {homeButton}
         <View style={styles.headerActions}>
           <TouchableOpacity
+            onPress={toggleLiked}
+            style={styles.actionButton}
+            accessibilityRole="button"
+            accessibilityLabel={liked ? 'Unlike podcast' : 'Like podcast'}>
+            <Ionicons name={liked ? 'heart' : 'heart-outline'} size={24} color={liked ? '#FF2D55' : '#007AFF'} />
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={sharePodcast}
-            style={styles.shareButton}
+            style={styles.actionButton}
             accessibilityRole="button"
             accessibilityLabel="Share podcast">
             <Ionicons name="share-outline" size={24} color="#007AFF" />
@@ -194,16 +227,29 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 12,
   },
-  backButton: {
-    fontSize: 18,
-    marginBottom: 8,
+  homeButton: {
+    minWidth: 92,
+    height: 42,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0, 122, 255, 0.25)',
+    backgroundColor: '#FFFFFF',
+  },
+  homeButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  shareButton: {
+  actionButton: {
     width: 42,
     height: 42,
     borderRadius: 14,
