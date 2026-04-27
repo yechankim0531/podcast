@@ -79,6 +79,7 @@ export default function PodcastDetailScreen() {
   }
 
   const { metadata, episodes } = data;
+  const displayedEpisodes = episodes.slice(0, 25);
 
   // Clean HTML from description
   const cleanDescription = (html: string) => {
@@ -180,9 +181,9 @@ export default function PodcastDetailScreen() {
         {/* Episodes List */}
         <ThemedView style={styles.episodesSection}>
           <ThemedText type="subtitle" style={styles.episodesTitle}>
-            Episodes ({episodes.length})
+            Episodes ({displayedEpisodes.length})
           </ThemedText>
-          {episodes.map((episode) => (
+          {displayedEpisodes.map((episode) => (
             <EpisodeCard
               key={episode.id}
               episode={episode}

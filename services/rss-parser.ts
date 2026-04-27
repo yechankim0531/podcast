@@ -11,6 +11,8 @@
 
 import type { ParsedPodcastData, Episode, PodcastMetadata } from '@/types/podcast';
 
+const MAX_EPISODES_PER_PODCAST = 25;
+
 /**
  * Fetches RSS feed XML from a URL
  * Works in both React Native and Node.js environments
@@ -84,7 +86,7 @@ function parseXMLWithRegex(xmlString: string): any {
   const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/gi;
   let itemMatch;
   
-  while ((itemMatch = itemRegex.exec(xmlString)) !== null) {
+  while ((itemMatch = itemRegex.exec(xmlString)) !== null && result.items.length < MAX_EPISODES_PER_PODCAST) {
     const itemXml = itemMatch[1];
     const item: any = {};
 

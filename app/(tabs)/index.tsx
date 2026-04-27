@@ -10,7 +10,6 @@ import { UserAvatarButton } from '@/components/user-avatar-button';
 import { useAudioPlayerContext } from '@/contexts/audio-player-context';
 import { useAuth } from '@/contexts/auth-context';
 import { fetchRecommendedPodcasts, fetchTrendingPodcasts } from '@/services/api/podcast-api';
-import { parseRSSFeed } from '@/services/rss-parser';
 
 interface PodcastItem {
   title: string;
@@ -45,7 +44,7 @@ export default function HomeScreen() {
       setError(null);
 
       // Load your podcasts from listening history
-      const yourPodcastsDataBase = Array.from(
+      const yourPodcastsData = Array.from(
         new Map(
           listeningHistory.map(item => [item.podcastRssUrl, {
             title: item.podcastTitle,
@@ -54,24 +53,6 @@ export default function HomeScreen() {
             rssUrl: item.podcastRssUrl,
           }])
         ).values()
-      );
-
-      const yourPodcastsData = await Promise.all(
-        yourPodcastsDataBase.map(async (podcast) => {
-          if (podcast.imageUrl) {
-            return podcast;
-          }
-
-          try {
-            const parsed = await parseRSSFeed(podcast.rssUrl);
-            return {
-              ...podcast,
-              imageUrl: parsed.metadata.imageUrl,
-            };
-          } catch {
-            return podcast;
-          }
-        })
       );
       setYourPodcasts(yourPodcastsData);
 
