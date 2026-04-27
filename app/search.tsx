@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -10,10 +10,12 @@ import { searchPodcasts } from '@/services/api/podcast-api';
 import type { PodcastMetadata } from '@/types/podcast';
 
 export default function SearchScreen() {
+  const segments = useSegments();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<PodcastMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const isTabsSearch = segments[0] === '(tabs)';
 
   useEffect(() => {
     const performSearch = async () => {
@@ -44,7 +46,7 @@ export default function SearchScreen() {
 
   const handlePodcastPress = (rssUrl: string) => {
     router.push({
-      pathname: '/podcast-detail',
+      pathname: isTabsSearch ? '/(tabs)/podcast-detail' : '/podcast-detail',
       params: { rssUrl: encodeURIComponent(rssUrl) },
     });
   };
@@ -70,9 +72,11 @@ export default function SearchScreen() {
     <ThemedView style={styles.container}>
       {/* Header with back button and search bar */}
       <ThemedView style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
-        </TouchableOpacity>
+        {!isTabsSearch && (
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#007AFF" />
+          </TouchableOpacity>
+        )}
         <ThemedView style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput

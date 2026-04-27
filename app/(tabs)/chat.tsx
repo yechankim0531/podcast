@@ -15,7 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAudioPlayer } from '@/hooks/use-audio-player';
 import { useVoiceRecognition } from '@/hooks/use-voice-recognition';
-import { generatePodcastAgentResponse } from '@/services/ai-agent';
+import { generatePodcastAgentResponse, type ChatMessage } from '@/services/ai-agent';
 
 export default function ChatScreen() {
   const { currentTrack } = useAudioPlayer();
@@ -29,8 +29,9 @@ export default function ChatScreen() {
   } = useVoiceRecognition();
 
   const inputRef = useRef<TextInput | null>(null);
+  const sendingRef = useRef(false);
   const [query, setQuery] = useState('');
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const focusQueryInput = () => {
@@ -44,18 +45,34 @@ export default function ChatScreen() {
   }, [transcript]);
 
   const handleSend = async () => {
+    if (sendingRef.current) return;
+
     const trimmed = query.trim();
     if (!trimmed) return;
 
+    sendingRef.current = true;
     const userMessage = { role: 'user' as const, text: trimmed };
+    const previousMessages = messages;
     setMessages(prev => [...prev, userMessage]);
     setQuery('');
     setIsLoading(true);
 
-    const answer = generatePodcastAgentResponse(trimmed, currentTrack);
-    setMessages(prev => [...prev, userMessage, { role: 'assistant', text: answer }]);
-    setIsLoading(false);
-    clearTranscript();
+    try {
+      const answer = await generatePodcastAgentResponse(trimmed, currentTrack, previousMessages);
+      setMessages(prev => [...prev, { role: 'assistant', text: answer }]);
+      clearTranscript();
+    } catch (error) {
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: error instanceof Error ? error.message : 'I could not answer that question right now.',
+        },
+      ]);
+    } finally {
+      sendingRef.current = false;
+      setIsLoading(false);
+    }
   };
 
   const handleVoicePress = async () => {

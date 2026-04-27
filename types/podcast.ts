@@ -11,6 +11,9 @@ export interface Episode {
   publishDate: string;
   duration?: string; // In seconds or "HH:MM:SS" format
   thumbnail?: string;
+  transcriptUrl?: string;
+  transcriptType?: string;
+  transcriptLanguage?: string;
   guid?: string; // RSS feed's unique identifier
 }
 

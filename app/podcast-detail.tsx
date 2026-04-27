@@ -139,9 +139,13 @@ export default function PodcastDetailScreen() {
                     episodePublishDate: encodeURIComponent(ep.publishDate),
                     episodeDuration: ep.duration ? encodeURIComponent(ep.duration) : '',
                     episodeThumbnail: ep.thumbnail ? encodeURIComponent(ep.thumbnail) : '',
+                    episodeTranscriptUrl: ep.transcriptUrl ? encodeURIComponent(ep.transcriptUrl) : '',
+                    episodeTranscriptType: ep.transcriptType ? encodeURIComponent(ep.transcriptType) : '',
+                    episodeTranscriptLanguage: ep.transcriptLanguage ? encodeURIComponent(ep.transcriptLanguage) : '',
                     podcastTitle: encodeURIComponent(metadata.title),
                     podcastAuthor: encodeURIComponent(metadata.author),
                     podcastRssUrl: decodedRssUrl ? encodeURIComponent(decodedRssUrl) : '',
+                    podcastImageUrl: metadata.imageUrl ? encodeURIComponent(metadata.imageUrl) : '',
                   },
                 });
               }}

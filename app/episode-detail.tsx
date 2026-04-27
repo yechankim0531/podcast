@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useAudioPlayer } from '@/hooks/use-audio-player';
 
 export default function EpisodeDetailScreen() {
-  const { playTrack } = useAudioPlayer();
+  const { clearEpisodeProgress, playTrack, playbackPositions } = useAudioPlayer();
   const { user, loading: authLoading } = useAuth();
   const params = useLocalSearchParams<{
     episodeTitle: string;
@@ -18,9 +18,13 @@ export default function EpisodeDetailScreen() {
     episodePublishDate: string;
     episodeDuration?: string;
     episodeThumbnail?: string;
+    episodeTranscriptUrl?: string;
+    episodeTranscriptType?: string;
+    episodeTranscriptLanguage?: string;
     podcastTitle: string;
     podcastAuthor: string;
     podcastRssUrl: string;
+    podcastImageUrl?: string;
   }>();
 
   // Decode URL-encoded strings
@@ -40,9 +44,13 @@ export default function EpisodeDetailScreen() {
   const episodePublishDate = decodeParam(params.episodePublishDate);
   const episodeDuration = params.episodeDuration ? decodeParam(params.episodeDuration) : undefined;
   const episodeThumbnail = params.episodeThumbnail ? decodeParam(params.episodeThumbnail) : undefined;
+  const episodeTranscriptUrl = params.episodeTranscriptUrl ? decodeParam(params.episodeTranscriptUrl) : undefined;
+  const episodeTranscriptType = params.episodeTranscriptType ? decodeParam(params.episodeTranscriptType) : undefined;
+  const episodeTranscriptLanguage = params.episodeTranscriptLanguage ? decodeParam(params.episodeTranscriptLanguage) : undefined;
   const podcastTitle = decodeParam(params.podcastTitle);
   const podcastAuthor = decodeParam(params.podcastAuthor);
   const podcastRssUrl = decodeParam(params.podcastRssUrl);
+  const podcastImageUrl = params.podcastImageUrl ? decodeParam(params.podcastImageUrl) : undefined;
 
   const formatDate = (dateString: string) => {
     try {
@@ -61,6 +69,46 @@ export default function EpisodeDetailScreen() {
   // Clean HTML from description
   const cleanDescription = (html: string) => {
     return html.replace(/<[^>]*>/g, '').trim();
+  };
+
+  const formatProgressTime = (millis: number): string => {
+    const totalSeconds = Math.floor(millis / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const savedPosition = playbackPositions[episodeAudioUrl] ?? 0;
+  const hasSavedProgress = savedPosition >= 5000;
+  const episodeTrack = {
+    episodeTitle,
+    episodeDescription,
+    episodeAudioUrl,
+    episodeThumbnail,
+    episodePublishDate,
+    episodeDuration,
+    episodeTranscriptUrl,
+    episodeTranscriptType,
+    episodeTranscriptLanguage,
+    podcastTitle,
+    podcastAuthor,
+    podcastRssUrl,
+    podcastImageUrl,
+  };
+
+  const continueEpisode = () => {
+    void playTrack(episodeTrack, savedPosition);
+  };
+
+  const restartEpisode = async () => {
+    await clearEpisodeProgress(episodeAudioUrl);
+    await playTrack(episodeTrack, 0);
   };
 
   return (
@@ -111,20 +159,24 @@ export default function EpisodeDetailScreen() {
 
           {/* Play Button */}
           <ThemedView style={styles.playButtonContainer}>
-            <TouchableOpacity
-              style={styles.playButton}
-              onPress={() => {
-                void playTrack({
-                  episodeTitle,
-                  episodeAudioUrl,
-                  episodeThumbnail,
-                  podcastTitle,
-                  podcastAuthor,
-                  podcastRssUrl,
-                });
-              }}>
-              <ThemedText style={styles.playButtonText}>▶ Play Episode</ThemedText>
-            </TouchableOpacity>
+            {hasSavedProgress ? (
+              <>
+                <TouchableOpacity style={styles.playButton} onPress={continueEpisode}>
+                  <ThemedText style={styles.playButtonText}>
+                    ▶ Continue from {formatProgressTime(savedPosition)}
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.playButton, styles.restartButton]} onPress={() => void restartEpisode()}>
+                  <ThemedText style={[styles.playButtonText, styles.restartButtonText]}>
+                    Restart Episode
+                  </ThemedText>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity style={styles.playButton} onPress={() => void restartEpisode()}>
+                <ThemedText style={styles.playButtonText}>▶ Play Episode</ThemedText>
+              </TouchableOpacity>
+            )}
           </ThemedView>
 
           {/* Episode Description */}
@@ -236,10 +288,18 @@ const styles = StyleSheet.create({
     minWidth: 200,
     alignItems: 'center',
   },
+  restartButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
   playButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
+  },
+  restartButtonText: {
+    color: '#007AFF',
   },
   playButtonHint: {
     fontSize: 12,
