@@ -1,6 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, Share, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -111,17 +112,41 @@ export default function EpisodeDetailScreen() {
     await playTrack(episodeTrack, 0);
   };
 
+  const shareEpisode = async () => {
+    const authorText = podcastAuthor ? ` by ${podcastAuthor}` : '';
+    const feedText = podcastRssUrl ? `\n\nPodcast feed: ${podcastRssUrl}` : '';
+
+    try {
+      await Share.share({
+        title: episodeTitle,
+        message: `Check out "${episodeTitle}" from "${podcastTitle}"${authorText}.${feedText}`,
+        url: podcastRssUrl,
+      });
+    } catch (err) {
+      console.error('Failed to share episode:', err);
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
         <ThemedText type="title" onPress={() => router.back()} style={styles.backButton}>
           ← Back
         </ThemedText>
-        <UserAvatarButton
-          user={user}
-          authLoading={authLoading}
-          onPress={() => router.push('/(tabs)/profile')}
-        />
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={shareEpisode}
+            style={styles.shareButton}
+            accessibilityRole="button"
+            accessibilityLabel="Share episode">
+            <Ionicons name="share-outline" size={24} color="#007AFF" />
+          </TouchableOpacity>
+          <UserAvatarButton
+            user={user}
+            authLoading={authLoading}
+            onPress={() => router.push('/(tabs)/profile')}
+          />
+        </View>
       </ThemedView>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Episode Header */}
@@ -221,6 +246,21 @@ const styles = StyleSheet.create({
   backButton: {
     fontSize: 18,
     marginBottom: 8,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  shareButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0, 122, 255, 0.25)',
+    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,

@@ -1,7 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { HorizontalPodcastList } from '@/components/horizontal-podcast-list';
 import { ProfileSidePanel } from '@/components/profile-side-panel';
@@ -138,10 +137,6 @@ export default function HomeScreen() {
     setIsProfileOpen((open) => !open);
   };
 
-  const handleChatButtonPress = () => {
-    router.push('/(tabs)/chat');
-  };
-
   const handlePodcastPress = (rssUrl: string) => {
     const encodedUrl = encodeURIComponent(rssUrl);
     router.push({ pathname: '/(tabs)/podcast-detail', params: { rssUrl: encodedUrl } });
@@ -169,9 +164,6 @@ export default function HomeScreen() {
               <ThemedText type="title" style={styles.heading}>
                 Podcasts
               </ThemedText>
-              <TouchableOpacity style={styles.chatButton} onPress={handleChatButtonPress}>
-                <Ionicons name="chatbubble-ellipses-outline" size={22} color="#007AFF" />
-              </TouchableOpacity>
               {headerAvatar}
             </View>
           </ThemedView>
@@ -194,9 +186,6 @@ export default function HomeScreen() {
               <ThemedText type="title" style={styles.heading}>
                 Podcasts
               </ThemedText>
-              <TouchableOpacity style={styles.chatButton} onPress={handleChatButtonPress}>
-                <Ionicons name="chatbubble-ellipses-outline" size={22} color="#007AFF" />
-              </TouchableOpacity>
               {headerAvatar}
             </View>
           </ThemedView>
@@ -220,9 +209,6 @@ export default function HomeScreen() {
             <ThemedText type="title" style={styles.heading}>
               Podcasts
             </ThemedText>
-            <TouchableOpacity style={styles.chatButton} onPress={handleChatButtonPress}>
-              <Ionicons name="chatbubble-ellipses-outline" size={22} color="#007AFF" />
-            </TouchableOpacity>
             {headerAvatar}
           </View>
         </ThemedView>
@@ -288,17 +274,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     opacity: 0.7,
-  },
-  chatButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(0, 122, 255, 0.25)',
-    backgroundColor: '#FFFFFF',
-    marginRight: 8,
   },
   errorContainer: {
     flex: 1,

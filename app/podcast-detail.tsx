@@ -1,7 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Share, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { EpisodeCard } from '@/components/episode-card';
 import { ThemedText } from '@/components/themed-text';
@@ -74,17 +75,41 @@ export default function PodcastDetailScreen() {
     setIsDescriptionExpanded(!isDescriptionExpanded);
   };
 
+  const sharePodcast = async () => {
+    const authorText = metadata.author ? ` by ${metadata.author}` : '';
+    const feedText = decodedRssUrl ? `\n\nPodcast feed: ${decodedRssUrl}` : '';
+
+    try {
+      await Share.share({
+        title: metadata.title,
+        message: `Check out "${metadata.title}"${authorText}.${feedText}`,
+        url: decodedRssUrl ?? metadata.websiteUrl,
+      });
+    } catch (err) {
+      console.error('Failed to share podcast:', err);
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
         <ThemedText type="title" onPress={() => router.push('/(tabs)')} style={styles.backButton}>
           ← Back
         </ThemedText>
-        <UserAvatarButton
-          user={user}
-          authLoading={authLoading}
-          onPress={() => router.push('/(tabs)/profile')}
-        />
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={sharePodcast}
+            style={styles.shareButton}
+            accessibilityRole="button"
+            accessibilityLabel="Share podcast">
+            <Ionicons name="share-outline" size={24} color="#007AFF" />
+          </TouchableOpacity>
+          <UserAvatarButton
+            user={user}
+            authLoading={authLoading}
+            onPress={() => router.push('/(tabs)/profile')}
+          />
+        </View>
       </ThemedView>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Podcast Header */}
@@ -172,6 +197,21 @@ const styles = StyleSheet.create({
   backButton: {
     fontSize: 18,
     marginBottom: 8,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  shareButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0, 122, 255, 0.25)',
+    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
