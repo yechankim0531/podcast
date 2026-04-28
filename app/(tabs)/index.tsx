@@ -7,6 +7,7 @@ import { ProfileSidePanel } from '@/components/profile-side-panel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UserAvatarButton } from '@/components/user-avatar-button';
+import { UserLikedRow } from '@/components/user-liked-row';
 import { useAudioPlayerContext } from '@/contexts/audio-player-context';
 import { useAuth } from '@/contexts/auth-context';
 import { fetchRecommendedPodcasts, fetchTrendingPodcasts } from '@/services/api/podcast-api';
@@ -123,6 +124,10 @@ export default function HomeScreen() {
     router.push({ pathname: '/(tabs)/podcast-detail', params: { rssUrl: encodedUrl } });
   };
 
+  const handleUserPress = (uid: string, displayName: string) => {
+    router.push({ pathname: '/(tabs)/user-liked-podcasts', params: { uid, displayName } });
+  };
+
   const headerAvatar = (
     <UserAvatarButton user={user} authLoading={authLoading} onPress={onAvatarPress} />
   );
@@ -212,6 +217,8 @@ export default function HomeScreen() {
             podcasts={trendingPodcasts}
             onPodcastPress={handlePodcastPress}
           />
+
+          <UserLikedRow onUserPress={handleUserPress} />
         </ScrollView>
       </ThemedView>
       {profileOverlay}

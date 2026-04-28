@@ -82,6 +82,7 @@ function GoogleSignInInner({ webClientId, onError }: { webClientId: string; onEr
   );
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest(requestConfig);
+  console.log('[GoogleAuth] request.redirectUri =', request?.redirectUri);
 
   useEffect(() => {
     if (response?.type === 'error') {

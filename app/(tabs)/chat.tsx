@@ -22,12 +22,13 @@ export default function ChatScreen() {
   const { currentTrack, hasTrackLoaded } = useAudioPlayer();
   const {
     isListening,
+    isTranscribing,
     transcript,
     error: voiceError,
     startListening,
     stopListening,
     clearTranscript,
-  } = useVoiceRecognition();
+  } = useVoiceRecognition(currentTrack);
 
   const inputRef = useRef<TextInput | null>(null);
   const sendingRef = useRef(false);
@@ -45,10 +46,10 @@ export default function ChatScreen() {
     }
   }, [transcript]);
 
-  const handleSend = async () => {
+  const handleSend = async (overrideText?: string) => {
     if (sendingRef.current) return;
 
-    const trimmed = query.trim();
+    const trimmed = (overrideText ?? query).trim();
     if (!trimmed) return;
 
     sendingRef.current = true;
@@ -78,10 +79,12 @@ export default function ChatScreen() {
 
   const handleVoicePress = async () => {
     if (isListening) {
-      await stopListening();
+      const text = await stopListening();
+      if (text) {
+        await handleSend(text);
+      }
       return;
     }
-
     await startListening();
   };
 
@@ -157,20 +160,31 @@ export default function ChatScreen() {
           ref={inputRef}
           value={query}
           onChangeText={setQuery}
-          placeholder="Ask your podcast question..."
-          placeholderTextColor="#999"
+          placeholder={isListening ? 'Listening...' : isTranscribing ? 'Transcribing...' : 'Ask your podcast question...'}
+          placeholderTextColor={isListening ? '#FF3B30' : isTranscribing ? '#007AFF' : '#999'}
           style={styles.input}
           returnKeyType="send"
-          onSubmitEditing={handleSend}
-          editable={!isLoading}
+          onSubmitEditing={() => void handleSend()}
+          editable={!isLoading && !isListening && !isTranscribing}
         />
-        <TouchableOpacity style={styles.voiceButton} onPress={handleVoicePress}>
-          <Ionicons name={isListening ? 'mic' : 'mic-outline'} size={22} color={isListening ? '#FFFFFF' : '#007AFF'} />
+        <TouchableOpacity
+          style={[styles.voiceButton, isListening && styles.voiceButtonActive]}
+          onPress={handleVoicePress}
+          disabled={isTranscribing || isLoading}>
+          {isTranscribing ? (
+            <ActivityIndicator size="small" color="#007AFF" />
+          ) : (
+            <Ionicons
+              name={isListening ? 'stop' : 'mic-outline'}
+              size={22}
+              color={isListening ? '#FFFFFF' : '#007AFF'}
+            />
+          )}
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.sendButton, isLoading || !query.trim() ? styles.sendButtonDisabled : null]}
-          onPress={handleSend}
-          disabled={isLoading || !query.trim()}>
+          onPress={() => void handleSend()}
+          disabled={isLoading || !query.trim() || isListening || isTranscribing}>
           {isLoading ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
@@ -313,6 +327,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
+  },
+  voiceButtonActive: {
+    backgroundColor: '#FF3B30',
+    borderColor: '#FF3B30',
   },
   sendButton: {
     width: 44,

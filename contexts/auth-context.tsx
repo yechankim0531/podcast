@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 
 type AuthContextValue = {
   user: User | null;
@@ -18,6 +19,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser);
       setLoading(false);
+      if (nextUser) {
+        setDoc(
+          doc(db, 'users', nextUser.uid),
+          {
+            displayName: nextUser.displayName ?? '',
+            photoURL: nextUser.photoURL ?? '',
+            email: nextUser.email ?? '',
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        ).catch(console.error);
+      }
     });
     return unsubscribe;
   }, []);

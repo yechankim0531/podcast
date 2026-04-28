@@ -62,6 +62,12 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="user-liked-podcasts"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

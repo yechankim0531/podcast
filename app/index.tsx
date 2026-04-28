@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, useRootNavigationState } from 'expo-router';
 
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/contexts/auth-context';
@@ -13,17 +13,17 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 export default function IndexGate() {
   const colorScheme = useColorScheme() ?? 'light';
   const { user, loading } = useAuth();
+  const navState = useRootNavigationState();
 
   useEffect(() => {
-    if (loading) {
-      return;
-    }
+    if (!navState?.key) return; // navigator not mounted yet
+    if (loading) return;
     if (user) {
       router.replace('/(tabs)');
     } else {
       router.replace('/(auth)/login');
     }
-  }, [user, loading]);
+  }, [user, loading, navState?.key]);
 
   return (
     <ThemedView style={styles.container}>
