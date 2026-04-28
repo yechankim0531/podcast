@@ -24,7 +24,7 @@ function uriToBlob(uri: string): Promise<Blob> {
   });
 }
 
-function jpegContentType(blob: Blob): string {
+function imageContentType(blob: Blob): string {
   const t = blob.type;
   if (t && t.startsWith('image/')) return t;
   return 'image/jpeg';
@@ -34,6 +34,6 @@ export async function uploadProfilePhotoToStorage(userId: string, localUri: stri
   const blob = await uriToBlob(localUri);
   const objectPath = `profile_photos/${userId}/${Date.now()}.jpg`;
   const storageRef = ref(storage, objectPath);
-  await uploadBytes(storageRef, blob, { contentType: jpegContentType(blob) });
+  await uploadBytes(storageRef, blob, { contentType: imageContentType(blob) });
   return getDownloadURL(storageRef);
 }

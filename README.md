@@ -1,28 +1,23 @@
-
-
 ## Get started
 
 ### Get started with Android Studio
 
-- Connect to the repo in Android Studio (Git > Clone) using:
-  `https://github.com/uvaCS4720/final-project-msw3jg-fkb5cz.git`
-- Run `npm install`.
-- Run `npx expo start`.
-- Open Device Manager in Android Studio and start your Android emulator/device.
-- In terminal, press `a` to launch the app on Android.
-- Expo Go should be automatically installed on the emulator/device; it should open and launch the application. Wait for the project to load. May take some time. 
+- Open this project folder in Android Studio.
+- Open **Device Manager** in Android Studio and start your Android emulator. Wait until the emulator is fully booted.
+- In the project terminal, install dependencies:
 
-1. Install dependencies
+  ```bash
+  npm install
+  ```
 
-   ```bash
-   npm install
-   ```
+- Start Expo:
 
-2. Start the app
+  ```bash
+  npx expo start
+  ```
 
-   ```bash
-   npx expo start
-   ```
+- In the Expo terminal, press `a` to run the app on Android.
+- If Expo Go is not installed on the emulator, it should install automatically and then open your app.
 
 In the output, you'll find options to open the app in a
 

@@ -25,12 +25,13 @@ import {
   updateProfile,
   type User,
 } from 'firebase/auth';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/contexts/auth-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { getAuthErrorMessage } from '@/lib/auth-errors';
 import { uploadProfilePhotoToStorage } from '@/lib/upload-profile-photo';
 
@@ -116,6 +117,16 @@ export default function ProfileScreen() {
         displayName: draftName.trim() || null,
         photoURL,
       });
+      await setDoc(
+        doc(db, 'users', current.uid),
+        {
+          displayName: draftName.trim(),
+          photoURL: photoURL ?? '',
+          email: current.email ?? '',
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
       await reload(current);
       setLocalPhotoUri(null);
       setEditOpen(false);
@@ -207,8 +218,8 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: Math.max(24, insets.top + 8) }]}>
         <View style={styles.hero}>
           <View style={[styles.avatarRing, { borderColor: palette.icon }]}>
-            {user.photoURL ? (
-              <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+            {avatarPreviewUri ? (
+              <Image source={{ uri: avatarPreviewUri }} style={styles.avatarImage} />
             ) : (
               <IconSymbol name="person.crop.circle.fill" size={72} color={palette.tint} />
             )}
