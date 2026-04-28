@@ -1,17 +1,15 @@
-import type { AudioTrack } from '@/contexts/audio-player-context';
-
-type WebSearchResult = {
-  title: string;
-  snippet: string;
-  url?: string;
-};
+import type { AudioTrack } from '@/types/podcast';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export type ChatMessage = {
   role: 'user' | 'assistant';
   text: string;
 };
 
+// ─── Transcript fetching ────────────────────────────────────────────────────
+
 const transcriptCache = new Map<string, string>();
+const MAX_TRANSCRIPT_CHARS = 12000;
 
 const toPlainText = (text: string): string =>
   text
@@ -68,11 +66,9 @@ const fetchTranscript = async (track: AudioTrack): Promise<string | null> => {
   try {
     const response = await fetch(url);
     if (!response.ok) return null;
-
     const raw = await response.text();
     const text = normalizeTranscript(raw, response.headers.get('content-type') ?? track.episodeTranscriptType);
     if (!text) return null;
-
     transcriptCache.set(url, text);
     return text;
   } catch {
@@ -80,164 +76,88 @@ const fetchTranscript = async (track: AudioTrack): Promise<string | null> => {
   }
 };
 
-const termsForQuestion = (question: string): string[] =>
-  question
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter((term) => term.length > 2)
-    .filter(
-      (term) =>
-        ![
-          'the',
-          'and',
-          'for',
-          'are',
-          'you',
-          'this',
-          'that',
-          'with',
-          'about',
-          'what',
-          'when',
-          'where',
-          'who',
-          'why',
-          'how',
-          'episode',
-          'podcast',
-        ].includes(term)
-    );
+// ─── Gemini client ──────────────────────────────────────────────────────────
 
-const findRelevantTranscriptSnippets = (question: string, transcript: string, maxSnippets = 3): string[] => {
-  const terms = termsForQuestion(question);
-  const sentences = transcript
-    .split(/(?<=[.!?])\s+/)
-    .map((sentence) => sentence.trim())
-    .filter((sentence) => sentence.length > 35);
+function getGeminiClient() {
+  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+  if (!apiKey) throw new Error('EXPO_PUBLIC_GEMINI_API_KEY is not set in your .env file.');
+  return new GoogleGenerativeAI(apiKey);
+}
 
-  const scored = sentences.map((sentence, index) => {
-    const lower = sentence.toLowerCase();
-    const score = terms.reduce((total, term) => total + (lower.includes(term) ? 1 : 0), 0);
-    return { sentence, score, index };
-  });
+// ─── Step 1: Classify whether transcript is needed ──────────────────────────
 
-  return scored
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score || a.index - b.index)
-    .slice(0, maxSnippets)
-    .map((item) => item.sentence);
-};
+async function needsTranscript(
+  question: string,
+  track: AudioTrack,
+  history: ChatMessage[]
+): Promise<boolean> {
+  // If no transcript URL exists, skip the check entirely
+  if (!track.episodeTranscriptUrl) return false;
 
-const shouldSearchWeb = (question: string): boolean => {
-  const query = question.toLowerCase();
-  return (
-    query.length > 12 ||
-    query.includes('search') ||
-    query.includes('web') ||
-    query.includes('internet') ||
-    query.includes('latest') ||
-    query.includes('current') ||
-    query.includes('news') ||
-    query.includes('recent') ||
-    query.includes('compare') ||
-    query.includes('fact') ||
-    query.includes('who is') ||
-    query.includes('what is') ||
-    query.includes('where is') ||
-    query.includes('why') ||
-    query.includes('how') ||
-    query.includes('explain')
-  );
-};
+  const genAI = getGeminiClient();
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-const isFollowUpQuestion = (question: string): boolean => {
-  const query = question.toLowerCase().trim();
-  return (
-    query.length < 80 &&
-    (query.includes('that') ||
-      query.includes('this') ||
-      query.includes('they') ||
-      query.includes('them') ||
-      query.includes('he') ||
-      query.includes('she') ||
-      query.includes('it') ||
-      query.startsWith('what about') ||
-      query.startsWith('how about') ||
-      query.startsWith('why') ||
-      query.startsWith('how so') ||
-      query.startsWith('tell me more'))
-  );
-};
-
-const buildContextualQuestion = (question: string, history: ChatMessage[]): string => {
-  const recentHistory = history.slice(-4);
-  if (!isFollowUpQuestion(question) || recentHistory.length === 0) {
-    return question;
-  }
-
-  const context = recentHistory
-    .map((message) => `${message.role}: ${message.text}`)
-    .join(' ');
-
-  return `${question} Context from the previous chat: ${context}`;
-};
-
-const webSearch = async (query: string): Promise<WebSearchResult[]> => {
-  try {
-    const response = await fetch(
-      `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`
-    );
-    if (!response.ok) return [];
-
-    const data = await response.json();
-    const results: WebSearchResult[] = [];
-
-    if (data.AbstractText) {
-      results.push({
-        title: data.Heading || 'DuckDuckGo result',
-        snippet: data.AbstractText,
-        url: data.AbstractURL,
-      });
-    }
-
-    if (data.Answer) {
-      results.push({
-        title: 'Direct answer',
-        snippet: data.Answer,
-      });
-    }
-
-    const related = Array.isArray(data.RelatedTopics) ? data.RelatedTopics : [];
-    related.forEach((item: any) => {
-      const entries = Array.isArray(item.Topics) ? item.Topics : [item];
-      entries.forEach((entry: any) => {
-        if (entry.Text && results.length < 4) {
-          results.push({
-            title: entry.Text.split(' - ')[0] || 'Related result',
-            snippet: entry.Text,
-            url: entry.FirstURL,
-          });
-        }
-      });
-    });
-
-    return results.slice(0, 3);
-  } catch {
-    return [];
-  }
-};
-
-const summarizeSources = (results: WebSearchResult[]): string => {
-  if (results.length === 0) return '';
-
-  return results
-    .map((result, index) => {
-      const source = result.url ? ` (${result.url})` : '';
-      return `${index + 1}. ${result.snippet}${source}`;
-    })
+  const recentHistory = history
+    .slice(-4)
+    .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`)
     .join('\n');
-};
+
+  const classificationPrompt = `You are deciding whether a podcast transcript is needed to answer a question.
+
+Episode: "${track.episodeTitle}" from "${track.podcastTitle}"
+${track.episodeDescription ? `Description: ${toPlainText(track.episodeDescription).slice(0, 300)}` : ''}
+${recentHistory ? `Recent conversation:\n${recentHistory}` : ''}
+
+Question: "${question}"
+
+Does answering this question require reading the episode transcript? Answer with only YES or NO.
+- YES if the question asks about specific things said, discussed, or mentioned in the episode
+- NO if the question is general knowledge, about the podcast/host in general, or can be answered without the episode content`;
+
+  const result = await model.generateContent(classificationPrompt);
+  return result.response.text().trim().toUpperCase().startsWith('YES');
+}
+
+// ─── Step 2: Build answer prompt ─────────────────────────────────────────────
+
+function buildSystemPrompt(track: AudioTrack | null, transcript: string | null): string {
+  const lines: string[] = [
+    'You are a helpful podcast assistant. Keep answers concise and conversational.',
+    'If you genuinely cannot answer something, say so honestly.',
+    '',
+  ];
+
+  if (!track) {
+    lines.push('No episode is currently playing. Answer using your general knowledge.');
+    return lines.join('\n');
+  }
+
+  lines.push(`Episode: "${track.episodeTitle}"`);
+  lines.push(`Podcast: "${track.podcastTitle}"`);
+  if (track.podcastAuthor) lines.push(`Host: ${track.podcastAuthor}`);
+  if (track.episodePublishDate) {
+    lines.push(`Published: ${new Date(track.episodePublishDate).toLocaleDateString()}`);
+  }
+  if (track.episodeDuration) lines.push(`Duration: ${track.episodeDuration}`);
+  if (track.episodeDescription) {
+    lines.push(`Description: ${toPlainText(track.episodeDescription).slice(0, 400)}`);
+  }
+
+  if (transcript) {
+    const trimmed = transcript.slice(0, MAX_TRANSCRIPT_CHARS);
+    lines.push('');
+    lines.push('--- EPISODE TRANSCRIPT ---');
+    lines.push(trimmed);
+    if (transcript.length > MAX_TRANSCRIPT_CHARS) lines.push('[transcript truncated]');
+    lines.push('--- END OF TRANSCRIPT ---');
+    lines.push('');
+    lines.push('Use the transcript above to answer the question accurately. Quote it where helpful.');
+  }
+
+  return lines.join('\n');
+}
+
+// ─── Main export ────────────────────────────────────────────────────────────
 
 export async function generatePodcastAgentResponse(
   question: string,
@@ -245,71 +165,30 @@ export async function generatePodcastAgentResponse(
   history: ChatMessage[] = []
 ): Promise<string> {
   const normalized = question.trim();
-  if (!normalized) {
-    return 'Please ask a question about the current episode.';
-  }
+  if (!normalized) return 'Please ask a question.';
 
-  if (!track) {
-    const contextualQuestion = buildContextualQuestion(normalized, history);
-    const webResults = await webSearch(contextualQuestion);
-    const sourceSummary = summarizeSources(webResults);
-
-    return sourceSummary
-      ? `I do not have an episode playing, so I searched the web instead.\n\nWeb context:\n${sourceSummary}`
-      : 'No episode is currently playing, and I could not find useful web context for that question.';
-  }
-
-  const query = normalized.toLowerCase();
-  const title = track.episodeTitle;
-  const podcast = track.podcastTitle;
-  const author = track.podcastAuthor ?? 'the host';
-  const description = track.episodeDescription ? toPlainText(track.episodeDescription) : null;
-  const contextualQuestion = buildContextualQuestion(normalized, history);
-  const transcript = await fetchTranscript(track);
-  const snippets = transcript ? findRelevantTranscriptSnippets(contextualQuestion, transcript) : [];
-  const webResults = shouldSearchWeb(contextualQuestion)
-    ? await webSearch(`${contextualQuestion} ${podcast} ${title}`)
-    : [];
-
-  if (query.includes('who is the host') || (query.includes('who') && query.includes('host'))) {
-    return `The host is ${author}.`;
-  }
-
-  if (query.includes('which podcast') || query.includes('podcast name') || query.includes('podcast is')) {
-    return `This is an episode of "${podcast}"${track.podcastAuthor ? `, hosted by ${author}` : ''}.`;
-  }
-
-  if (query.includes('when') && (query.includes('release') || query.includes('published') || query.includes('date'))) {
-    if (track.episodePublishDate) {
-      return `This episode was published on ${new Date(track.episodePublishDate).toLocaleDateString()}.`;
+  // Step 1: decide if transcript is needed (only when a track is playing)
+  let transcript: string | null = null;
+  if (track) {
+    const required = await needsTranscript(normalized, track, history);
+    if (required) {
+      transcript = await fetchTranscript(track);
     }
-    return 'I do not have the exact publish date for this episode.';
   }
 
-  if (query.includes('duration') || query.includes('length') || query.includes('long')) {
-    return track.episodeDuration
-      ? `The listed episode duration is ${track.episodeDuration}.`
-      : 'I do not have the exact runtime for this episode.';
-  }
+  // Step 2: answer with or without transcript
+  const genAI = getGeminiClient();
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: buildSystemPrompt(track, transcript),
+  });
 
-  const answerParts: string[] = [];
+  const geminiHistory = history.map(msg => ({
+    role: msg.role === 'user' ? 'user' : 'model',
+    parts: [{ text: msg.text }],
+  }));
 
-  if (snippets.length > 0) {
-    answerParts.push(`From the episode transcript, the most relevant parts I found are:\n${snippets.join('\n\n')}`);
-  } else if (transcript) {
-    answerParts.push('I found the episode transcript, but I could not match a specific passage to that question.');
-  } else if (description) {
-    answerParts.push(`I do not see a transcript URL for this episode, so I am using the episode description: ${description}`);
-  } else {
-    answerParts.push(`I do not see a transcript or description for this episode. I can still use the title "${title}" from "${podcast}".`);
-  }
-
-  const sourceSummary = summarizeSources(webResults);
-  if (sourceSummary) {
-    answerParts.push(`Web context:\n${sourceSummary}`);
-  } else if (shouldSearchWeb(normalized)) {
-    answerParts.push('I tried a web search, but did not find a useful instant result.');
-  }
-
-  return answerParts.join('\n\n');
+  const chat = model.startChat({ history: geminiHistory });
+  const result = await chat.sendMessage(normalized);
+  return result.response.text();
 }

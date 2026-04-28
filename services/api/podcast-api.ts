@@ -94,7 +94,9 @@ export async function fetchTrendingPodcasts(): Promise<PodcastMetadata[]> {
     }
 
     const data = await response.json();
-    return data.results.map(itunesResultToPodcastMetadata);
+    return data.results
+      .filter((r: any) => r.feedUrl)
+      .map(itunesResultToPodcastMetadata);
   } catch (error) {
     throw new Error(
       `Failed to fetch trending podcasts: ${error instanceof Error ? error.message : 'Unknown error'}`

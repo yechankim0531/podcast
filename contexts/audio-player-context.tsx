@@ -2,21 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
-export interface AudioTrack {
-  episodeTitle: string;
-  episodeDescription?: string;
-  episodeAudioUrl: string;
-  episodeThumbnail?: string;
-  episodePublishDate?: string;
-  episodeDuration?: string;
-  episodeTranscriptUrl?: string;
-  episodeTranscriptType?: string;
-  episodeTranscriptLanguage?: string;
-  podcastTitle: string;
-  podcastAuthor?: string;
-  podcastRssUrl: string;
-  podcastImageUrl?: string;
-}
+import type { AudioTrack } from '@/types/podcast';
+
+export type { AudioTrack };
 
 interface ListeningHistoryItem {
   podcastTitle: string;
@@ -47,6 +35,7 @@ interface AudioPlayerContextValue {
   playTrack: (track: AudioTrack, startPositionMillis?: number) => Promise<void>;
   clearEpisodeProgress: (episodeAudioUrl: string) => Promise<void>;
   addToHistory: (track: AudioTrack) => Promise<void>;
+  dismissPlayer: () => Promise<void>;
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
@@ -386,6 +375,15 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  const dismissPlayer = useCallback(async () => {
+    await saveCurrentTrackProgress();
+    await stopAudio();
+    await unloadCurrentSound();
+    setCurrentTrack(null);
+    currentTrackRef.current = null;
+    clearPlaybackState();
+  }, [saveCurrentTrackProgress, stopAudio, unloadCurrentSound, clearPlaybackState]);
+
   const playTrack = useCallback(
     async (track: AudioTrack, startPositionMillis: number = 0) => {
       const previousTrack = currentTrackRef.current;
@@ -437,6 +435,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       playTrack,
       clearEpisodeProgress,
       addToHistory,
+      dismissPlayer,
     }),
     [
       currentTrack,
@@ -457,6 +456,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       togglePlayPause,
       clearEpisodeProgress,
       addToHistory,
+      dismissPlayer,
     ]
   );
 

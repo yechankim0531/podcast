@@ -13,12 +13,13 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { miniPlayerHeight } from '@/components/mini-player';
 import { useAudioPlayer } from '@/hooks/use-audio-player';
 import { useVoiceRecognition } from '@/hooks/use-voice-recognition';
 import { generatePodcastAgentResponse, type ChatMessage } from '@/services/ai-agent';
 
 export default function ChatScreen() {
-  const { currentTrack } = useAudioPlayer();
+  const { currentTrack, hasTrackLoaded } = useAudioPlayer();
   const {
     isListening,
     transcript,
@@ -151,7 +152,7 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={100}
-        style={styles.footer}>
+        style={[styles.footer, hasTrackLoaded && { marginBottom: miniPlayerHeight + 8 }]}>
         <TextInput
           ref={inputRef}
           value={query}

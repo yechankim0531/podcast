@@ -68,6 +68,8 @@ function GoogleSignInInner({ webClientId, onError }: { webClientId: string; onEr
 
   const extra = Constants.expoConfig?.extra?.googleAuth as GoogleAuthExtra | undefined;
   const redirectUri = useMemo(() => getGoogleRedirectUri(), []);
+  console.log('[GoogleAuth] redirectUri =', redirectUri);
+  console.log('[GoogleAuth] originalFullName =', Constants.expoConfig?.originalFullName);
 
   const requestConfig = useMemo(
     () => ({

@@ -33,3 +33,19 @@ export interface ParsedPodcastData {
   metadata: PodcastMetadata;
   episodes: Episode[];
 }
+
+export interface AudioTrack {
+  episodeTitle: string;
+  episodeDescription?: string;
+  episodeAudioUrl: string;
+  episodeThumbnail?: string;
+  episodePublishDate?: string;
+  episodeDuration?: string;
+  episodeTranscriptUrl?: string;
+  episodeTranscriptType?: string;
+  episodeTranscriptLanguage?: string;
+  podcastTitle: string;
+  podcastAuthor?: string;
+  podcastRssUrl: string;
+  podcastImageUrl?: string;
+}

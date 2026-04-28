@@ -11,7 +11,7 @@ import {
 import { Link, router } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
-// import { GoogleSignInButton } from '@/components/google-sign-in-button';
+import { GoogleSignInButton } from '@/components/google-sign-in-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/contexts/auth-context';
@@ -117,13 +117,13 @@ export default function LoginScreen() {
           )}
         </Pressable>
 
-        {/* <View style={styles.dividerRow}>
+        <View style={styles.dividerRow}>
           <View style={[styles.dividerLine, { backgroundColor: palette.icon }]} />
           <ThemedText style={styles.dividerText}>or</ThemedText>
           <View style={[styles.dividerLine, { backgroundColor: palette.icon }]} />
-        </View> */}
+        </View>
 
-        {/* <GoogleSignInButton onError={setError} /> */}
+        <GoogleSignInButton onError={setError} />
 
         <View style={styles.footer}>
           <ThemedText>No account? </ThemedText>
