@@ -1,5 +1,6 @@
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -7,10 +8,12 @@ import type { Episode } from '@/types/podcast';
 
 type EpisodeCardProps = {
   episode: Episode;
+  isPlaying?: boolean;
   onPress?: (episode: Episode) => void;
+  onPlay?: (episode: Episode) => void;
 };
 
-export function EpisodeCard({ episode, onPress }: EpisodeCardProps) {
+export function EpisodeCard({ episode, isPlaying = false, onPress, onPlay }: EpisodeCardProps) {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -53,6 +56,25 @@ export function EpisodeCard({ episode, onPress }: EpisodeCardProps) {
             <ThemedText style={styles.description} numberOfLines={2}>
               {episode.description.replace(/<[^>]*>/g, '').trim()}
             </ThemedText>
+          )}
+          {onPlay && (
+            <View style={styles.playRow}>
+              <TouchableOpacity
+                style={styles.playButton}
+                onPress={(e) => { e.stopPropagation(); onPlay(episode); }}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel={isPlaying ? 'Pause episode' : 'Play episode'}>
+                <Ionicons
+                  name={isPlaying ? 'pause' : 'play'}
+                  size={14}
+                  color="#FFFFFF"
+                />
+                <ThemedText style={styles.playButtonText}>
+                  {isPlaying ? 'Playing' : 'Play'}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
           )}
         </ThemedView>
       </ThemedView>
@@ -104,5 +126,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     opacity: 0.7,
     lineHeight: 18,
+  },
+  playRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+  },
+  playButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#8E8E93',
+  },
+  playButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

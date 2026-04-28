@@ -10,6 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { UserAvatarButton } from '@/components/user-avatar-button';
 import { useAuth } from '@/contexts/auth-context';
 import { useLikedPodcasts } from '@/contexts/liked-podcasts-context';
+import { useAudioPlayer } from '@/hooks/use-audio-player';
 import { usePodcastRSS } from '@/hooks/use-podcast-rss';
 
 export default function PodcastDetailScreen() {
@@ -20,6 +21,7 @@ export default function PodcastDetailScreen() {
   const { data, loading, error } = usePodcastRSS(decodedRssUrl);
   const { user, loading: authLoading } = useAuth();
   const { isPodcastLiked, toggleLikedPodcast } = useLikedPodcasts();
+  const { currentTrack, isPlaying, playTrack, togglePlayPause } = useAudioPlayer();
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   const goHome = () => {
@@ -80,6 +82,29 @@ export default function PodcastDetailScreen() {
 
   const { metadata, episodes } = data;
   const displayedEpisodes = episodes.slice(0, 25);
+
+  const handlePlay = async (episode: import('@/types/podcast').Episode) => {
+    const track = {
+      episodeTitle: episode.title,
+      episodeDescription: episode.description,
+      episodeAudioUrl: episode.audioUrl,
+      episodeThumbnail: episode.thumbnail,
+      episodePublishDate: episode.publishDate,
+      episodeDuration: episode.duration,
+      episodeTranscriptUrl: episode.transcriptUrl,
+      episodeTranscriptType: episode.transcriptType,
+      episodeTranscriptLanguage: episode.transcriptLanguage,
+      podcastTitle: metadata.title,
+      podcastAuthor: metadata.author,
+      podcastRssUrl: decodedRssUrl ?? '',
+      podcastImageUrl: metadata.imageUrl,
+    };
+    if (currentTrack?.episodeAudioUrl === episode.audioUrl) {
+      await togglePlayPause();
+    } else {
+      await playTrack(track);
+    }
+  };
 
   // Clean HTML from description
   const cleanDescription = (html: string) => {
@@ -187,6 +212,8 @@ export default function PodcastDetailScreen() {
             <EpisodeCard
               key={episode.id}
               episode={episode}
+              isPlaying={currentTrack?.episodeAudioUrl === episode.audioUrl && isPlaying}
+              onPlay={handlePlay}
               onPress={(ep) => {
                 // Navigate to episode detail with episode data
                 router.push({

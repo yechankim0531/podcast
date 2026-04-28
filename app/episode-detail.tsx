@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useAudioPlayer } from '@/hooks/use-audio-player';
 
 export default function EpisodeDetailScreen() {
-  const { clearEpisodeProgress, playTrack, playbackPositions } = useAudioPlayer();
+  const { currentTrack, isPlaying, togglePlayPause, clearEpisodeProgress, playTrack, playbackPositions } = useAudioPlayer();
   const { user, loading: authLoading } = useAuth();
   const params = useLocalSearchParams<{
     episodeTitle: string;
@@ -85,6 +85,7 @@ export default function EpisodeDetailScreen() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const isThisEpisodeCurrent = currentTrack?.episodeAudioUrl === episodeAudioUrl;
   const savedPosition = playbackPositions[episodeAudioUrl] ?? 0;
   const hasSavedProgress = savedPosition >= 5000;
   const episodeTrack = {
@@ -184,14 +185,33 @@ export default function EpisodeDetailScreen() {
 
           {/* Play Button */}
           <ThemedView style={styles.playButtonContainer}>
-            {hasSavedProgress ? (
+            {isThisEpisodeCurrent ? (
               <>
-                <TouchableOpacity style={styles.playButton} onPress={continueEpisode}>
+                <TouchableOpacity
+                  style={styles.playButton}
+                  onPress={() => void togglePlayPause()}>
+                  <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color="#FFFFFF" />
                   <ThemedText style={styles.playButtonText}>
-                    ▶ Continue from {formatProgressTime(savedPosition)}
+                    {isPlaying ? 'Pause' : 'Resume'}
                   </ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.playButton, styles.restartButton]} onPress={() => void restartEpisode()}>
+                  <Ionicons name="refresh" size={16} color="#007AFF" />
+                  <ThemedText style={[styles.playButtonText, styles.restartButtonText]}>
+                    Restart Episode
+                  </ThemedText>
+                </TouchableOpacity>
+              </>
+            ) : hasSavedProgress ? (
+              <>
+                <TouchableOpacity style={styles.playButton} onPress={continueEpisode}>
+                  <Ionicons name="play" size={20} color="#FFFFFF" />
+                  <ThemedText style={styles.playButtonText}>
+                    Continue from {formatProgressTime(savedPosition)}
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.playButton, styles.restartButton]} onPress={() => void restartEpisode()}>
+                  <Ionicons name="refresh" size={16} color="#007AFF" />
                   <ThemedText style={[styles.playButtonText, styles.restartButtonText]}>
                     Restart Episode
                   </ThemedText>
@@ -199,7 +219,8 @@ export default function EpisodeDetailScreen() {
               </>
             ) : (
               <TouchableOpacity style={styles.playButton} onPress={() => void restartEpisode()}>
-                <ThemedText style={styles.playButtonText}>▶ Play Episode</ThemedText>
+                <Ionicons name="play" size={20} color="#FFFFFF" />
+                <ThemedText style={styles.playButtonText}>Play Episode</ThemedText>
               </TouchableOpacity>
             )}
           </ThemedView>
@@ -321,12 +342,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   playButton: {
-    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 12,
     minWidth: 200,
-    alignItems: 'center',
+    backgroundColor: '#8E8E93',
   },
   restartButton: {
     backgroundColor: 'transparent',

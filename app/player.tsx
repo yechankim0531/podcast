@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#8E8E93',
   },
   playButtonText: {
     fontSize: 32,
